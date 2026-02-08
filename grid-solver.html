@@ -1,0 +1,982 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>3x3 — переключение клеток с расчетом</title>
+  <style>
+    :root{ 
+      --size: 120px; 
+      --mobile-size: 85px;
+      --modal-z-index: 1000;
+    }
+    
+    body{ 
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial; 
+      display: flex; 
+      align-items: flex-start;
+      justify-content: center; 
+      min-height: 100vh; 
+      background: #f3f4f6; 
+      margin: 1; 
+      padding: 10px 20px 20px 20px;
+    }
+    
+    .app{ 
+      text-align: center; 
+      width: 100%;
+      max-width: 600px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      margin-top: 10px;
+    }
+    
+    .controls{ 
+      margin-top: 15px;
+      margin-bottom: 15px;
+      display: flex; 
+      flex-wrap: wrap; 
+      gap: 10px; 
+      justify-content: center; 
+      align-items: center; 
+      width: 100%;
+    }
+        
+    button{ 
+      padding: 10px 16px; 
+      border-radius: 8px; 
+      border: 1px solid #cbd5e1; 
+      background: #fff; 
+      cursor: pointer; 
+      font-weight: 600; 
+      font-size: 16px;
+      transition: all 0.2s ease;
+    }
+    
+    button:hover:not(:disabled) {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+    
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    
+    button.toggle.running{ 
+      background: #10b981; 
+      color: white; 
+      border-color: #059669; 
+    }
+    
+    .grid-container {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      width: 100%;
+      margin: 20px 0;
+    }
+    
+    .grid{ 
+      display: grid; 
+      grid-template-columns: repeat(3, var(--size)); 
+      grid-template-rows: repeat(3, var(--size)); 
+      gap: 10px; 
+      justify-content: center;
+    }
+    
+    .cell{ 
+      width: var(--size); 
+      height: var(--size); 
+      display: flex; 
+      align-items: center; 
+      justify-content: center; 
+      cursor: pointer; 
+      user-select: none; 
+      border-radius: 12px; 
+      box-shadow: 0 4px 8px rgba(2,6,23,0.12); 
+      border: 2px solid rgba(2,6,23,0.08);
+      transition: all 0.2s ease;
+    }
+    
+    .cell:hover {
+      transform: scale(1.03);
+      box-shadow: 0 6px 12px rgba(2,6,23,0.15);
+    }
+    
+    .cell.white{ 
+      background: #ffffff; 
+    }
+    
+    .cell.black{ 
+      background: #111827; 
+    }
+    
+    .cell-label{ 
+      font-weight: 800; 
+      font-size: 18px;
+      color: #111827; 
+    }
+    
+    .cell.black .cell-label{ 
+      color: #f9fafb; 
+    }
+
+    .footer{ 
+      margin-top: 20px; 
+      color: #6b7280; 
+      font-size: 15px; 
+      line-height: 1.5;
+      text-align: center;
+      padding: 0 20px;
+      max-width: 500px;
+    }
+    
+    .result{ 
+      margin-top: 20px; 
+      font-size: 16px; 
+      color: #111827; 
+      white-space: pre-line; 
+      text-align: left; 
+      display: inline-block; 
+      background: #fff; 
+      padding: 16px 20px; 
+      border-radius: 12px; 
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      width: 100%;
+      max-width: 500px;
+      box-sizing: border-box;
+    }
+    
+    .result-title {
+      font-weight: 700;
+      margin-bottom: 8px;
+      color: #374151;
+      font-size: 18px;
+      text-align: center;
+    }
+    
+    .solution {
+      margin-bottom: 12px;
+      padding-bottom: 12px;
+      border-bottom: 1px solid #e5e7eb;
+    }
+    
+    .solution:last-child {
+      margin-bottom: 0;
+      border-bottom: none;
+      padding-bottom: 0;
+    }
+
+    /* Модальное окно шаблонов */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.7);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: var(--modal-z-index);
+      padding: 20px;
+    }
+    
+    .modal-overlay.active {
+      display: flex;
+      animation: fadeIn 0.3s ease;
+    }
+    
+    .modal {
+      background: white;
+      border-radius: 16px;
+      padding: 30px;
+      max-width: 700px;
+      width: 100%;
+      max-height: 80vh;
+      overflow-y: auto;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+      animation: slideUp 0.4s ease;
+    }
+    
+    .modal-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 25px;
+    }
+    
+    .modal-title {
+      font-size: 24px;
+      font-weight: 700;
+      color: #111827;
+      margin: 0;
+    }
+    
+    .close-modal {
+      background: none;
+      border: none;
+      font-size: 24px;
+      color: #6b7280;
+      cursor: pointer;
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.2s;
+    }
+    
+    .close-modal:hover {
+      background: #f3f4f6;
+    }
+    
+    .templates-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+      gap: 20px;
+      margin-bottom: 25px;
+    }
+    
+    .template-item {
+      background: #f9fafb;
+      border-radius: 12px;
+      padding: 20px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      border: 2px solid transparent;
+    }
+    
+    .template-item:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+      border-color: #3b82f6;
+      background: #eff6ff;
+    }
+    
+    .template-preview {
+      display: grid;
+      grid-template-columns: repeat(3, 40px);
+      grid-template-rows: repeat(3, 40px);
+      gap: 4px;
+      margin-bottom: 15px;
+      justify-content: center;
+    }
+    
+    .template-cell {
+      width: 40px;
+      height: 40px;
+      border-radius: 6px;
+      border: 1px solid #d1d5db;
+    }
+    
+    .template-cell.white {
+      background: white;
+    }
+    
+    .template-cell.black {
+      background: #111827;
+    }
+    
+    .template-name {
+      font-weight: 600;
+      font-size: 16px;
+      color: #111827;
+      margin-bottom: 5px;
+    }
+    
+    .template-desc {
+      font-size: 14px;
+      color: #6b7280;
+      line-height: 1.4;
+    }
+    
+    .modal-footer {
+      text-align: center;
+      padding-top: 20px;
+      border-top: 1px solid #e5e7eb;
+    }
+    
+    .back-button {
+      background: #6b7280;
+      color: white;
+      border: none;
+    }
+    
+    .back-button:hover {
+      background: #4b5563;
+    }
+
+    /* Анимации */
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+    
+    @keyframes slideUp {
+      from {
+        opacity: 0;
+        transform: translateY(30px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    /* Мобильная адаптация */
+    @media (max-width: 768px) {
+      :root {
+        --size: var(--mobile-size);
+      }
+      
+      body {
+         padding: 5px 15px 15px 15px;
+      }
+      
+      .app {
+        margin-top: 5px;
+        max-width: 100%;
+      }
+      
+      .controls {
+        margin-bottom: 12px;
+        flex-direction: column;
+        gap: 12px;
+      }
+      
+      .grid {
+        grid-template-columns: repeat(3, var(--mobile-size));
+        grid-template-rows: repeat(3, var(--mobile-size));
+        gap: 8px;
+      }
+      
+      .cell {
+        width: var(--mobile-size);
+        height: var(--mobile-size);
+        border-radius: 10px;
+      }
+      
+      .cell-label {
+        font-size: 16px;
+      }
+      
+      button {
+        width: 100%;
+        max-width: 300px;
+        padding: 12px 20px;
+        font-size: 17px;
+      }
+      
+      .footer {
+        font-size: 14px;
+        padding: 0 10px;
+      }
+      
+      .result {
+        font-size: 15px;
+        padding: 14px 16px;
+      }
+      
+      .modal {
+        padding: 20px;
+        max-height: 85vh;
+      }
+      
+      .modal-title {
+        font-size: 20px;
+      }
+      
+      .templates-grid {
+        grid-template-columns: 1fr;
+        gap: 15px;
+      }
+      
+      .template-preview {
+        grid-template-columns: repeat(3, 35px);
+        grid-template-rows: repeat(3, 35px);
+      }
+      
+      .template-cell {
+        width: 35px;
+        height: 35px;
+      }
+    }
+    
+    @media (max-width: 380px) {
+      :root {
+        --mobile-size: 75px;
+      }
+
+      body {
+        padding: 5px 10px 10px 10px;
+      }
+      
+      .app {
+        margin-top: 0;
+      }
+      
+      .grid {
+        gap: 6px;
+      }
+      
+      .modal {
+        padding: 15px;
+      }
+      
+      .template-preview {
+        grid-template-columns: repeat(3, 30px);
+        grid-template-rows: repeat(3, 30px);
+      }
+      
+      .template-cell {
+        width: 30px;
+        height: 30px;
+      }
+    }
+    
+    @media (max-width: 320px) {
+      :root {
+        --mobile-size: 70px;
+      }
+      
+      body {
+        padding: 10px;
+      }
+      
+      .template-preview {
+        grid-template-columns: repeat(3, 25px);
+        grid-template-rows: repeat(3, 25px);
+        gap: 3px;
+      }
+      
+      .template-cell {
+        width: 25px;
+        height: 25px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div class="controls">
+      <button id="startStop" class="toggle">Запустить</button>
+      <button id="reset">Сброс</button>
+      <button id="invert">Инверсия</button>
+      <button id="solve">Рассчитать решение</button>
+      <button id="templates" class="templates">Шаблоны</button>
+    </div>
+
+    <div class="grid-container">
+      <div class="grid" id="grid" aria-label="Игровое поле 3 на 3"></div>
+    </div>
+
+    <div class="result" id="result"></div>
+
+    <div class="footer">В остановленном режиме — меняется только выбранная клетка. В запущенном — выбранная клетка и её соседи.</div>
+
+  </div>
+
+  <!-- Модальное окно шаблонов -->
+  <div class="modal-overlay" id="modalOverlay">
+    <div class="modal">
+      <div class="modal-header">
+        <h2 class="modal-title">Выберите шаблон</h2>
+        <button class="close-modal" id="closeModal" aria-label="Закрыть окно">×</button>
+      </div>
+      
+      <div class="templates-grid" id="templatesGrid">
+        <!-- Шаблоны будут добавлены динамически -->
+      </div>
+      
+      <div class="modal-footer">
+        <button class="back-button" id="backButton">Вернуться к игре</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function(){
+      const gridEl = document.getElementById('grid');
+      const startStopBtn = document.getElementById('startStop');
+      const resetBtn = document.getElementById('reset');
+      const invertBtn = document.getElementById('invert');
+      const solveBtn = document.getElementById('solve');
+      const templatesBtn = document.getElementById('templates');
+      const resultEl = document.getElementById('result');
+      const modalOverlay = document.getElementById('modalOverlay');
+      const closeModal = document.getElementById('closeModal');
+      const backButton = document.getElementById('backButton');
+      const templatesGrid = document.getElementById('templatesGrid');
+
+      let running = false; // false = остановлено
+      const SIZE = 3;
+      const cells = [];
+
+      // Определение шаблонов
+      const templates = [
+        {
+          id: 1,
+          name: "Шахматная доска",
+          description: "Чередующиеся черные и белые клетки",
+          pattern: [
+            [1, 0, 1],
+            [0, 1, 0],
+            [1, 0, 1]
+          ]
+        },
+        {
+          id: 2,
+          name: "Крест без центра",
+          description: "Крест из черных клеток без центра",
+          pattern: [
+            [0, 1, 0],
+            [1, 0, 1],
+            [0, 1, 0]
+          ]
+        },
+        {
+          id: 3,
+          name: "Крест",
+          description: "Крест из черных клеток",
+          pattern: [
+            [0, 1, 0],
+            [1, 1, 1],
+            [0, 1, 0]
+          ]
+        },
+        {
+          id: 4,
+          name: "Углы",
+          description: "Черные клетки по углам",
+          pattern: [
+            [1, 0, 1],
+            [0, 0, 0],
+            [1, 0, 1]
+          ]
+        },
+        {
+          id: 5,
+          name: "Горизонтальные полосы",
+          description: "Полосы по горизонтали",
+          pattern: [
+            [1, 1, 1],
+            [0, 0, 0],
+            [1, 1, 1]
+          ]
+        },
+        {
+          id: 6,
+          name: "Вертикальные полосы",
+          description: "Черные и белые полосы",
+          pattern: [
+            [1, 0, 1],
+            [1, 0, 1],
+            [1, 0, 1]
+          ]
+        },
+		{
+		  id: 7,
+		  name: "Буква Z (повёрнутая)",
+		  description: "Диагональная фигура в форме Z, повёрнутой против часовой стрелки",
+		  pattern: [
+			[1, 1, 0],
+			[0, 1, 0],
+			[0, 1, 1]
+		  ]
+		},
+		{
+		  id: 8,
+		  name: "Буква Z (зеркальная)",
+		  description: "Диагональная фигура в форме Z, повёрнутой по часовой стрелке",
+		  pattern: [
+			[0, 1, 1],
+			[0, 1, 0],
+			[1, 1, 0]
+		  ]
+		},
+		{
+		  id: 9,
+		  name: "Боковые углы с центром",
+		  description: "Левый верхний и правый нижний углы соединены через центр",
+		  pattern: [
+			[1, 0, 0],
+			[1, 1, 1],
+			[0, 0, 1]
+		  ]
+		},
+		{
+		  id: 10,
+		  name: "Боковые углы с центром (зеркальная)",
+		  description: "Правый верхний и левый нижний углы соединены через центр",
+		  pattern: [
+			[0, 0, 1],
+			[1, 1, 1],
+			[1, 0, 0]
+		  ]
+		},
+        {
+          id: 11,
+          name: "Горизонтальная полоса",
+          description: "Горизонтальная полоса из черных клеток",
+          pattern: [
+            [0, 0, 0],
+            [1, 1, 1],
+            [0, 0, 0]
+          ]
+		},
+        {
+          id: 12,
+          name: "Вертикальная полоса",
+          description: "Вертикальная полоса из черных клеток",
+          pattern: [
+            [0, 1, 0],
+            [0, 1, 0],
+            [0, 1, 0]
+          ]
+        },
+        {
+          id: 13,
+          name: "Диагональ",
+          description: "Черные клетки по диагонали",
+          pattern: [
+            [1, 0, 0],
+            [0, 1, 0],
+            [0, 0, 1]
+          ]
+        },
+		{
+		  id: 14,
+		  name: "Вторая диагональ",
+		  description: "Черные клетки по обратной диагонали",
+		  pattern: [
+			[0, 0, 1],
+			[0, 1, 0],
+			[1, 0, 0]
+		  ]
+		},
+        {
+          id: 15,
+          name: "Рамка",
+          description: "Черные клетки по краям",
+          pattern: [
+            [1, 1, 1],
+            [1, 0, 1],
+            [1, 1, 1]
+          ]
+        },
+        {
+          id: 16,
+          name: "Точка в центре",
+          description: "Одна черная клетка в центре",
+          pattern: [
+            [0, 0, 0],
+            [0, 1, 0],
+            [0, 0, 0]
+          ]
+        },
+        {
+          id: 17,
+          name: "Полное поле",
+          description: "Все клетки черные",
+          pattern: [
+            [1, 1, 1],
+            [1, 1, 1],
+            [1, 1, 1]
+          ]
+        },
+        {
+          id: 18,
+          name: "Пустое поле",
+          description: "Все клетки белые",
+          pattern: [
+            [0, 0, 0],
+            [0, 0, 0],
+            [0, 0, 0]
+          ]
+        }
+      ];
+
+      function createGrid(){
+        gridEl.innerHTML = '';
+        for(let r=0;r<SIZE;r++){
+          cells[r] = [];
+          for(let c=0;c<SIZE;c++){
+            const div = document.createElement('div');
+            div.className = 'cell white';
+            div.setAttribute('data-row', r);
+            div.setAttribute('data-col', c);
+            div.setAttribute('role','button');
+            div.setAttribute('tabindex','0');
+            div.setAttribute('aria-label', `Клетка ${r+1},${c+1}, белый цвет`);
+            
+            const label = document.createElement('div');
+            label.className = 'cell-label';
+            label.textContent = `${r*SIZE + c + 1}`;
+            div.appendChild(label);
+            
+            gridEl.appendChild(div);
+            cells[r][c] = div;
+          }
+        }
+      }
+
+      function toggleCell(r,c){
+        if(r<0||c<0||r>=SIZE||c>=SIZE) return;
+        const el = cells[r][c];
+        if(el.classList.contains('white')){
+          el.classList.remove('white');
+          el.classList.add('black');
+          el.setAttribute('aria-label', `Клетка ${r+1},${c+1}, черный цвет`);
+        } else {
+          el.classList.remove('black');
+          el.classList.add('white');
+          el.setAttribute('aria-label', `Клетка ${r+1},${c+1}, белый цвет`);
+        }
+      }
+
+      gridEl.addEventListener('click', (ev)=>{
+        const cell = ev.target.closest('.cell');
+        if(!cell) return;
+        const r = Number(cell.getAttribute('data-row'));
+        const c = Number(cell.getAttribute('data-col'));
+
+        if(running){
+          toggleCell(r,c);
+          toggleCell(r-1,c);
+          toggleCell(r+1,c);
+          toggleCell(r,c-1);
+          toggleCell(r,c+1);
+        } else {
+          toggleCell(r,c);
+        }
+      });
+
+      gridEl.addEventListener('keydown', (ev)=>{
+        if(ev.key === 'Enter' || ev.key === ' '){
+          ev.preventDefault();
+          const cell = ev.target.closest('.cell');
+          if(!cell) return;
+          cell.click();
+        }
+      });
+
+      function updateModeUI(){
+        if(running){
+          startStopBtn.textContent = 'Остановить';
+          startStopBtn.classList.add('running');
+        } else {
+          startStopBtn.textContent = 'Запустить';
+          startStopBtn.classList.remove('running');
+        }
+      }
+
+      startStopBtn.addEventListener('click', ()=>{
+        running = !running;
+        updateModeUI();
+      });
+
+      resetBtn.addEventListener('click', ()=>{
+        for(let r=0;r<SIZE;r++){
+          for(let c=0;c<SIZE;c++){
+            cells[r][c].classList.remove('black');
+            cells[r][c].classList.add('white');
+            cells[r][c].setAttribute('aria-label', `Клетка ${r+1},${c+1}, белый цвет`);
+          }
+        }
+        resultEl.textContent = '';
+      });
+
+      // Функция инверсии всех клеток
+      function invertAllCells() {
+        for(let r=0;r<SIZE;r++){
+          for(let c=0;c<SIZE;c++){
+            const cell = cells[r][c];
+            if(cell.classList.contains('white')){
+              cell.classList.remove('white');
+              cell.classList.add('black');
+              cell.setAttribute('aria-label', `Клетка ${r+1},${c+1}, черный цвет`);
+            } else {
+              cell.classList.remove('black');
+              cell.classList.add('white');
+              cell.setAttribute('aria-label', `Клетка ${r+1},${c+1}, белый цвет`);
+            }
+          }
+        }
+        resultEl.textContent = '';
+      }
+
+      // Обработчик для кнопки инверсии
+      invertBtn.addEventListener('click', invertAllCells);
+
+      // Получение состояния в виде матрицы 0/1 (0=white, 1=black)
+      function getState(){
+        const state = [];
+        for(let r=0;r<SIZE;r++){
+          for(let c=0;c<SIZE;c++){
+            state.push(cells[r][c].classList.contains('black') ? 1 : 0);
+          }
+        }
+        return state;
+      }
+
+      // Применить нажатие (по логике "running" режима)
+      function press(state, index){
+        const r = Math.floor(index / SIZE);
+        const c = index % SIZE;
+        const toggle = (rr,cc)=>{
+          if(rr<0||cc<0||rr>=SIZE||cc>=SIZE) return;
+          const i = rr*SIZE + cc;
+          state[i] ^= 1;
+        };
+        toggle(r,c);
+        toggle(r-1,c);
+        toggle(r+1,c);
+        toggle(r,c-1);
+        toggle(r,c+1);
+      }
+
+      // Решатель (поиск последовательности до нужного состояния)
+      function solveForTarget(current, target){
+        const SIZE2 = SIZE*SIZE;
+        const res = [];
+        for(let mask=0; mask < (1<<SIZE2); mask++){
+          const st = current.slice();
+          for(let i=0;i<SIZE2;i++){
+            if(mask & (1<<i)) press(st, i);
+          }
+          if(st.every((v,idx)=>v===target[idx])){
+            for(let i=0;i<SIZE2;i++) if(mask & (1<<i)) res.push(i+1);
+            return res;
+          }
+        }
+        return null;
+      }
+
+      solveBtn.addEventListener('click', ()=>{
+        const current = getState();
+        const whiteTarget = Array(9).fill(0);
+        const blackTarget = Array(9).fill(1);
+
+        const toWhite = solveForTarget(current, whiteTarget);
+        const toBlack = solveForTarget(current, blackTarget);
+
+        let text = '<div class="result-title">Решение:</div>';
+        
+        if(toWhite) {
+          text += `<div class="solution"><strong>К белому полю:</strong><br>Нажать клетки: ${toWhite.join(', ')}</div>`;
+        } else {
+          text += `<div class="solution"><strong>К белому полю:</strong><br>Нет решения</div>`;
+        }
+        
+        if(toBlack) {
+          text += `<div class="solution"><strong>К чёрному полю:</strong><br>Нажать клетки: ${toBlack.join(', ')}</div>`;
+        } else {
+          text += `<div class="solution"><strong>К чёрному полю:</strong><br>Нет решения</div>`;
+        }
+        
+        resultEl.innerHTML = text;
+      });
+
+      // Функция для отображения модального окна с шаблонами
+      function showTemplatesModal() {
+        modalOverlay.classList.add('active');
+        document.body.style.overflow = 'hidden';
+        
+        // Заполняем сетку шаблонов
+        templatesGrid.innerHTML = '';
+        
+        templates.forEach(template => {
+          const templateItem = document.createElement('div');
+          templateItem.className = 'template-item';
+          templateItem.setAttribute('data-id', template.id);
+          
+          // Создаем превью шаблона
+          const preview = document.createElement('div');
+          preview.className = 'template-preview';
+          
+          for(let r=0; r<SIZE; r++) {
+            for(let c=0; c<SIZE; c++) {
+              const cell = document.createElement('div');
+              cell.className = template.pattern[r][c] === 1 ? 'template-cell black' : 'template-cell white';
+              preview.appendChild(cell);
+            }
+          }
+          
+          // Добавляем название и описание
+          const name = document.createElement('div');
+          name.className = 'template-name';
+          name.textContent = template.name;
+          
+          const desc = document.createElement('div');
+          desc.className = 'template-desc';
+          desc.textContent = template.description;
+          
+          templateItem.appendChild(preview);
+          templateItem.appendChild(name);
+          templateItem.appendChild(desc);
+          
+          // Добавляем обработчик клика
+          templateItem.addEventListener('click', () => {
+            applyTemplate(template.pattern);
+            closeModalOverlay();
+          });
+          
+          templatesGrid.appendChild(templateItem);
+        });
+      }
+
+      // Функция применения шаблона к полю
+      function applyTemplate(pattern) {
+        for(let r=0; r<SIZE; r++) {
+          for(let c=0; c<SIZE; c++) {
+            const cell = cells[r][c];
+            if(pattern[r][c] === 1) {
+              cell.classList.remove('white');
+              cell.classList.add('black');
+              cell.setAttribute('aria-label', `Клетка ${r+1},${c+1}, черный цвет`);
+            } else {
+              cell.classList.remove('black');
+              cell.classList.add('white');
+              cell.setAttribute('aria-label', `Клетка ${r+1},${c+1}, белый цвет`);
+            }
+          }
+        }
+        resultEl.textContent = '';
+      }
+
+      // Функция закрытия модального окна
+      function closeModalOverlay() {
+        modalOverlay.classList.remove('active');
+        document.body.style.overflow = 'auto';
+      }
+
+      // Обработчики для модального окна
+      templatesBtn.addEventListener('click', showTemplatesModal);
+      closeModal.addEventListener('click', closeModalOverlay);
+      backButton.addEventListener('click', closeModalOverlay);
+      
+      // Закрытие по клику на фон
+      modalOverlay.addEventListener('click', (ev) => {
+        if(ev.target === modalOverlay) {
+          closeModalOverlay();
+        }
+      });
+      
+      // Закрытие по клавише ESC
+      document.addEventListener('keydown', (ev) => {
+        if(ev.key === 'Escape' && modalOverlay.classList.contains('active')) {
+          closeModalOverlay();
+        }
+      });
+
+      createGrid();
+      updateModeUI();
+    })();
+  </script>
+</body>
+</html>

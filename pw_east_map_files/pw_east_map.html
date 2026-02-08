@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<title>Perfect World - Карта востока</title>
+<style>
+body {
+  margin: 0;
+  font-family: Arial, sans-serif;
+  display: flex;
+  height: 100vh;
+  overflow: hidden;
+}
+#menu {
+  width: 420px;
+  background: #f0f0f0;
+  overflow-y: auto;
+  padding: 10px;
+  box-sizing: border-box;
+  border-right: 1px solid #ccc;
+}
+.header { cursor: pointer; margin-top: 5px; display: flex; align-items: center; justify-content: space-between; }
+.city-header { font-weight: bold; }
+.category-header { margin-left: 15px; }
+.activity-header { margin-left: 30px; display: flex; align-items: center; gap: 5px; }
+.point { margin-left: 45px; display: flex; align-items: center; margin-top: 2px; }
+.point input[type="checkbox"] {
+  appearance: none; width: 16px; height: 16px; border: 2px solid #666; border-radius: 50%; margin-right: 6px; cursor: pointer; background: white; position: relative;
+}
+.point input[type="checkbox"]:checked { background: #4caf50; border-color: #4caf50; }
+.point input[type="checkbox"]:checked::after { content: "✓"; position: absolute; color: white; font-size: 12px; left: 2px; top: -1px; }
+.point input[type="checkbox"]:checked + span { text-decoration: line-through; color: #777; }
+canvas { flex: 1; display: block; background: #ccc; cursor: grab; }
+canvas.dragging { cursor: grabbing; }
+#controls { margin-bottom: 10px; display: flex; flex-wrap: wrap; gap: 5px; }
+#controls_info { margin-bottom: 10px; display: flex; flex-wrap: wrap; gap: 5px; }
+.separator { display: inline-block; width: 10px; }
+hr.divider { flex-basis: 100%; border: 0; border-top: 1px solid #ccc; margin: 5px 0; }
+</style>
+</head>
+<body>
+
+<div id="menu">
+  <div id="controls_info">
+    Данные хранятся в браузере.<br>
+    Загрузить свою или скачать текущую конфигурацию:
+  </div>
+  <div id="controls">
+    <input type="file" id="fileInput">
+    <button id="saveBtn">Скачать</button>
+    <button id="resetBtn">Сброс</button>
+    <hr class="divider"/>
+    <button id="toggleCollapseExpand">Свернуть / развернуть все</button>
+    <button id="toggleSelect">Отметить / снять отметки у выбранного</button>
+    <button id="resetMap">Сбросить положение карты</button>
+    <hr class="divider"/>
+  </div>
+</div>
+
+<canvas id="mapCanvas"></canvas>
+
+<script>
+const MENU_WIDTH = 420;
+const CHECK_RADIUS = 10;
+
+let pointsData = { cities: [] };
+let collapsed = {};
+let iconCache = {};
+
+let canvas = document.getElementById("mapCanvas");
+let ctx = canvas.getContext("2d");
+let menu = document.getElementById("menu");
+
+let mapImg = new Image();
+mapImg.src = "all_map.png";
+
+const coord_left = 38;
+const coord_right = 348;
+const coord_bottom = 294;
+const coord_top = 805;
+
+let zoom = 1, offsetX = 0, offsetY = 0;
+let isDragging = false, dragStartX = 0, dragStartY = 0;
+
+/* ---------- HELPERS ---------- */
+function safeName(v){ return v ?? ""; }
+function formatPointText(p){
+  let t = `${p.x},${p.y}`;
+  if(p.height != null) t += ` (${p.height})`;
+  if(p.area) t += ` : ${p.area}`;
+  return t;
+}
+function key(ci,ca,ai){ return `c${ci}-ca${ca??"x"}-a${ai??"x"}`; }
+function getColor(name){
+  const c=["red","green","blue","orange","purple","cyan","magenta","yellow","brown","pink"];
+  name=name||"x"; let h=0; for(let i=0;i<name.length;i++) h=(h<<5)-h+name.charCodeAt(i);
+  return c[Math.abs(h)%c.length];
+}
+function logicToNorm(x,y){
+  let xn=(x-coord_left)/(coord_right-coord_left);
+  let yn=(y-coord_bottom)/(coord_top-coord_bottom);
+  return [xn,1-yn];
+}
+function getIcon(path){
+  if(!path) return null;
+  if(iconCache[path]) return iconCache[path];
+  let img=new Image();
+  img.src=path;
+  iconCache[path]=img;
+  return img;
+}
+function forEachVisiblePoint(cb){
+  pointsData.cities.forEach(city=>{
+    city.categories.forEach(cat=>{
+      cat.activities.forEach(act=>{
+        if(!act.show) return;
+        act.points.forEach(p=>cb(p,act));
+      });
+    });
+  });
+}
+
+/* ---------- LOCALSTORAGE ---------- */
+function saveToLocalStorage(){ localStorage.setItem("userData", JSON.stringify(pointsData)); }
+
+/* ---------- MENU ---------- */
+function makeHeader(title, collapsedVal, onCollapse, level){
+  let h=document.createElement("div");
+  h.className="header "+level+"-header";
+  let arrow=document.createElement("span");
+  arrow.textContent=collapsedVal?"▶":"▼";
+  arrow.style.marginRight="5px";
+  arrow.onclick=onCollapse;
+  let text=document.createTextNode(safeName(title));
+  let wrapper=document.createElement("div");
+  wrapper.style.display="flex";
+  wrapper.style.alignItems="center";
+  wrapper.append(arrow,text);
+  h.appendChild(wrapper);
+  return h;
+}
+function makeCategoryHeader(cat, collapsedVal, onCollapse){
+  let h=document.createElement("div");
+  h.className="header category-header";
+  let arrow=document.createElement("span");
+  arrow.textContent=collapsedVal?"▶":"▼";
+  arrow.onclick=onCollapse;
+  let text=document.createTextNode(" "+safeName(cat.name));
+  let left=document.createElement("div");
+  left.style.display="flex";
+  left.style.alignItems="center";
+  left.append(arrow,text);
+  h.appendChild(left);
+  let btn=document.createElement("button");
+  btn.textContent="Показать/скрыть";
+  btn.onclick=()=>{ 
+    let allShown = cat.activities.every(a => a.show !== false);
+    cat.activities.forEach(a => a.show = allShown ? false : true);
+    buildMenu();
+    drawMap();
+    saveToLocalStorage();
+  };
+  h.appendChild(btn);
+  return h;
+}
+function makeActivityHeader(act, collapsedVal, onCollapse){
+  let h=document.createElement("div");
+  h.className="header activity-header";
+  let arrow=document.createElement("span");
+  arrow.textContent=collapsedVal?"▶":"▼";
+  arrow.onclick=onCollapse;
+  let cb=document.createElement("input");
+  cb.type="checkbox";
+  cb.checked=act.show ?? true;
+  cb.onchange=()=>{ act.show=cb.checked; drawMap(); saveToLocalStorage(); };
+  let text=document.createTextNode(" "+safeName(act.name));
+  let wrapper=document.createElement("div");
+  wrapper.style.display="flex";
+  wrapper.style.alignItems="center";
+  wrapper.append(cb,arrow,text);
+  h.appendChild(wrapper);
+  let btn=document.createElement("button");
+  btn.textContent="Отметить";
+  btn.onclick=()=>{ 
+    let all=act.points.every(p=>p.collected);
+    act.points.forEach(p=>p.collected=!all);
+    buildMenu();
+    drawMap();
+    saveToLocalStorage();
+  };
+  h.appendChild(btn);
+  return h;
+}
+function buildMenu(){
+  menu.querySelectorAll('.header,.point').forEach(e=>e.remove());
+  pointsData.cities.forEach((city,ci)=>{
+    let ck=key(ci);
+    if(!(ck in collapsed)) collapsed[ck]= city.show===false;
+    menu.appendChild(makeHeader(city.name,collapsed[ck],()=>{collapsed[ck]=!collapsed[ck]; buildMenu();}, "city"));
+    if(collapsed[ck]) return;
+    city.categories.forEach((cat,cai)=>{
+      let cak=key(ci,cai);
+      if(!(cak in collapsed)) collapsed[cak]= cat.show===false;
+      menu.appendChild(makeCategoryHeader(cat,collapsed[cak],()=>{collapsed[cak]=!collapsed[cak]; buildMenu();}));
+      if(collapsed[cak]) return;
+      cat.activities.forEach((act,ai)=>{
+        let ak=key(ci,cai,ai);
+        if(!(ak in collapsed)) collapsed[ak]= act.show===false;
+        menu.appendChild(makeActivityHeader(act,collapsed[ak],()=>{collapsed[ak]=!collapsed[ak]; buildMenu();}));
+        if(collapsed[ak]) return;
+        act.points.forEach(p=>{
+          let d=document.createElement("div");
+          d.className="point";
+          let cb=document.createElement("input");
+          cb.type="checkbox";
+          cb.checked=p.collected;
+          cb.onchange=()=>{ p.collected=cb.checked; drawMap(); saveToLocalStorage(); };
+          let s=document.createElement("span");
+          s.textContent=formatPointText(p);
+          d.append(cb,s);
+          menu.appendChild(d);
+        });
+      });
+    });
+  });
+}
+
+/* ---------- CANVAS ---------- */
+function resizeCanvas(){ canvas.width=window.innerWidth-MENU_WIDTH; canvas.height=window.innerHeight; }
+function drawMap(){
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  if(!mapImg.complete) return;
+  let baseScale=Math.min(canvas.width/mapImg.width,canvas.height/mapImg.height);
+  let w=mapImg.width*baseScale*zoom;
+  let h=mapImg.height*baseScale*zoom;
+  ctx.drawImage(mapImg, offsetX, offsetY, w, h);
+  forEachVisiblePoint((p, act) => {
+    if(p.collected) return;
+    let [nx, ny] = logicToNorm(p.x, p.y);
+    let px = offsetX + nx * w;
+    let py = offsetY + ny * h;
+    let icon = getIcon(act.icon);
+    if(icon){
+      if(icon.complete && icon.naturalWidth!==0) ctx.drawImage(icon, px-12, py-12, 24, 24);
+      else { ctx.beginPath(); ctx.arc(px, py, 8, 0, 2*Math.PI); ctx.fillStyle=getColor(act.name); ctx.fill(); ctx.stroke(); icon.onload=()=>drawMap(); }
+    } else { ctx.beginPath(); ctx.arc(px, py, 8, 0, 2*Math.PI); ctx.fillStyle=getColor(act.name); ctx.fill(); ctx.stroke(); }
+  });
+}
+
+/* ---------- CLICK ---------- */
+canvas.onclick=(e)=>{
+  if(isDragging) return;
+  let r=canvas.getBoundingClientRect();
+  let mx=e.clientX-r.left;
+  let my=e.clientY-r.top;
+  let baseScale=Math.min(canvas.width/mapImg.width,canvas.height/mapImg.height);
+  let w=mapImg.width*baseScale*zoom;
+  let h=mapImg.height*baseScale*zoom;
+  forEachVisiblePoint((p)=>{
+    if(p.collected) return;
+    let [nx,ny]=logicToNorm(p.x,p.y);
+    let px=offsetX+nx*w;
+    let py=offsetY+ny*h;
+    if((mx-px)**2+(my-py)**2<CHECK_RADIUS**2){
+      p.collected=true;
+      buildMenu();
+      drawMap();
+      saveToLocalStorage();
+    }
+  });
+};
+
+/* ---------- MOUSE ---------- */
+canvas.onmousedown=e=>{ isDragging=false; dragStartX=e.clientX-offsetX; dragStartY=e.clientY-offsetY; };
+canvas.onmousemove=e=>{ if(e.buttons!==1) return; isDragging=true; canvas.classList.add("dragging"); offsetX=e.clientX-dragStartX; offsetY=e.clientY-dragStartY; drawMap(); };
+canvas.onmouseup=()=>canvas.classList.remove("dragging");
+canvas.onwheel=e=>{ e.preventDefault(); let r=canvas.getBoundingClientRect(); let mx=e.clientX-r.left; let my=e.clientY-r.top; let oldZoom=zoom; zoom*= e.deltaY<0?1.1:0.9; zoom=Math.min(Math.max(zoom,0.3),5); offsetX = mx - (mx-offsetX)*(zoom/oldZoom); offsetY = my - (my-offsetY)*(zoom/oldZoom); drawMap(); };
+
+/* ---------- JSON HANDLING ---------- */
+function loadFromString(jsonStr){
+  try{
+    pointsData = JSON.parse(jsonStr);
+    collapsed={}; iconCache={};
+    buildMenu();
+    drawMap();
+    saveToLocalStorage();
+  }catch(e){ console.error("Ошибка парсинга JSON", e); }
+}
+function loadFromLocalStorageOrDefault(){
+  let stored = localStorage.getItem("userData");
+  if(stored) loadFromString(stored);
+  else loadFromString(getDefaultJson());
+}
+document.getElementById("fileInput").onchange=e=>{
+  let f=e.target.files[0];
+  if(!f) return;
+  let r=new FileReader();
+  r.onload=ev=>{ loadFromString(ev.target.result); };
+  r.readAsText(f);
+};
+document.getElementById("saveBtn").onclick=()=>{
+  let blob=new Blob([JSON.stringify(pointsData,null,2)],{type:"application/json"});
+  let a=document.createElement("a"); a.href=URL.createObjectURL(blob); a.download="user_data.json"; a.click();
+};
+/* ---------- RESET BUTTON ---------- */
+document.getElementById("resetBtn").onclick = ()=>{
+  if(!confirm("Сбросить данные к шаблону?")) return;
+  localStorage.removeItem("userData");
+  loadFromString(getDefaultJson());
+};
+/* ---------- TOGGLE CONTROLS ---------- */
+document.getElementById("toggleSelect").onclick = ()=>{
+  let anyUnselected = false;
+  forEachVisiblePoint(p=>{ if(!p.collected) anyUnselected=true; });
+  forEachVisiblePoint(p=>p.collected = anyUnselected);
+  buildMenu(); drawMap(); saveToLocalStorage();
+};
+document.getElementById("toggleCollapseExpand").onclick = ()=>{
+  let anyExpanded = Object.values(collapsed).some(v=>v===false);
+  Object.keys(collapsed).forEach(k=>collapsed[k]=anyExpanded);
+  buildMenu();
+};
+
+/* ---------- RESET MAP ---------- */
+document.getElementById("resetMap").onclick = ()=>{
+  zoom = 1; offsetX = 0; offsetY = 0;
+  drawMap();
+};
+
+/* ---------- MAIN ---------- */
+function main(){
+  resizeCanvas();
+  if(mapImg.complete) drawMap();
+  else mapImg.onload=drawMap;
+  loadFromLocalStorageOrDefault();
+}
+window.onresize=()=>{ resizeCanvas(); drawMap(); };
+main();
+
+/* ---------- DEFAULT JSON ---------- */
+function getDefaultJson() {
+  return `
+  сам вставлю строку
+  `;
+}
+</script>
+</body>
+</html>
