@@ -29,24 +29,34 @@
 #### Структура данных
 ```json
 {
+  "version": 1,
+  "nextCityId": 1,
   "cities": [
     {
+      "id": "c1",
       "name": "string",
+      "nextCategoryId": 1,
       "categories": [
         {
+          "id": "cat1",
           "name": "string",
+          "nextActivityId": 1,
           "activities": [
             {
+              "id": "a1",
               "name": "string",
-              "icon": "string",
+              "icon": "string" | null,
               "show": boolean,
+              "nextPointId": 1,
               "points": [
                 {
+                  "id": "p1",
                   "x": number,
                   "y": number,
                   "height": number | null,
-                  "label": string | null,
-                  "description": string | null,
+                  "label": "string" | null,
+                  "description": "string" | null,
+                  "note": "null",
                   "collected": boolean
                 }
               ]
