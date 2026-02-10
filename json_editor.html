@@ -1,0 +1,2691 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Редактор структуры городов</title>
+    <style>
+        /* Стили остаются без изменений, только добавляем стиль для нового блока */
+        .file-info {
+            background-color: #f8f9fa;
+            border: 1px solid #eee;
+            border-radius: 5px;
+            padding: 10px;
+            margin-bottom: 15px;
+            font-size: 13px;
+            color: #2c3e50;
+        }
+        
+        .file-info-header {
+            font-weight: 600;
+            margin-bottom: 5px;
+            color: #2c3e50;
+        }
+        
+        .file-info-content {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            align-items: center;
+        }
+        
+        .file-status {
+            padding: 3px 8px;
+            border-radius: 3px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        
+        .file-status-new {
+            background-color: #2ecc71;
+            color: white;
+        }
+        
+        .file-status-loaded {
+            background-color: #3498db;
+            color: white;
+        }
+        
+        /* Остальные стили без изменений */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background-color: #f5f5f5;
+            color: #333;
+            line-height: 1.6;
+            padding: 20px;
+            min-height: 100vh;
+        }
+        
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+            display: grid;
+            grid-template-columns: 300px 1fr;
+            gap: 20px;
+            height: calc(100vh - 40px);
+        }
+        
+        .sidebar {
+            background-color: white;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            padding: 15px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            max-height: 100%;
+            min-height: 0;
+        }
+        
+        .sidebar-content {
+            flex: 1 1 auto;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+            min-height: 0;
+        }
+        
+        .main-content {
+            background-color: white;
+            border-radius: 10px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            padding: 0;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            position: relative;
+        }
+        
+        h1 {
+            color: #2c3e50;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #3498db;
+            font-size: 24px;
+        }
+        
+        h2 {
+            color: #34495e;
+            margin: 15px 0 10px 0;
+            font-size: 18px;
+        }
+        
+        h3 {
+            color: #2c3e50;
+            padding: 15px 20px;
+            margin: 0;
+            border-bottom: 1px solid #eee;
+            background-color: #f8f9fa;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .section {
+            margin-bottom: 0;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #eee;
+            flex-shrink: 0;
+            min-height: 100px;
+            max-height: 200px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        
+        .section-title {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            flex-shrink: 0;
+            padding: 0 5px;
+        }
+        
+        .section-title h4 {
+            margin: 0;
+            color: #34495e;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+        
+        .section-title h4:hover {
+            color: #3498db;
+            text-decoration: underline;
+        }
+        
+        .list-container {
+            flex: 1 1 auto;
+            overflow-y: auto;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            min-height: 50px;
+            max-height: 140px;
+        }
+        
+        .list-item {
+            padding: 8px 10px;
+            border-bottom: 1px solid #eee;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .list-item:hover {
+            background-color: #f9f9f9;
+        }
+        
+        .list-item.selected {
+            background-color: #e3f2fd;
+            border-left: 4px solid #3498db;
+        }
+        
+        .list-item .item-content {
+            flex-grow: 1;
+            min-width: 0;
+        }
+        
+        .list-item .item-name {
+            font-weight: 600;
+            margin-bottom: 2px;
+            display: flex;
+            align-items: center;
+            font-size: 13px;
+        }
+        
+        .list-item .item-id {
+            font-size: 11px;
+            color: #7f8c8d;
+        }
+        
+        .list-item .item-actions {
+            display: flex;
+            gap: 5px;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+        
+        .list-item:hover .item-actions {
+            opacity: 1;
+        }
+        
+        .btn {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            font-size: 14px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            height: 36px;
+            min-width: 90px;
+            box-sizing: border-box;
+        }
+        
+        .btn:hover {
+            background-color: #2980b9;
+        }
+        
+        .btn-delete {
+            background-color: #e74c3c;
+            padding: 4px 8px;
+            font-size: 12px;
+            height: 36px;
+            min-width: auto;
+            width: 36px;
+        }
+        
+        #modalClosePointBtn {			
+            width: 36px;
+            height: 36px;
+        }
+        
+        .btn-delete:hover {
+            background-color: #c0392b;
+        }
+        
+        .btn-add, .btn-export, .file-label, .btn-back {
+            background-color: #2ecc71;
+            width: 128px;
+            padding: 8px;
+            height: 45px;
+        }
+        
+        .btn-add:hover {
+            background-color: #27ae60;
+        }
+        
+        .btn-add-small {
+            background-color: #2ecc71;
+            padding: 0;
+            font-size: 14px;
+            height: 24px;
+            width: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-width: auto;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            border: none;
+            color: white;
+        }
+        
+        .btn-add-small:hover {
+            background-color: #27ae60;
+        }
+        
+        .btn-export {
+            background-color: #9b59b6;
+        }
+        
+        .btn-export:hover {
+            background-color: #8e44ad;
+        }
+        
+        .btn-back {
+            background-color: #95a5a6;
+            margin-right: 10px;
+        }
+        
+        .btn-back:hover {
+            background-color: #7f8c8d;
+        }
+        
+        #modalDeletePointBtn {
+            min-width: 90px;
+            margin-right: 10px;
+        }
+        
+        .form-group {
+            margin-bottom: 15px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #2c3e50;
+        }
+        
+        .form-control {
+            width: 100%;
+            padding: 8px 10px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            font-size: 14px;
+            transition: border-color 0.2s;
+        }
+        
+        .form-control:focus {
+            outline: none;
+            border-color: #3498db;
+            box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
+        }
+        
+        textarea.form-control {
+            min-height: 100px;
+            resize: vertical;
+            font-family: monospace;
+            font-size: 13px;
+        }
+        
+        .checkbox-group {
+            display: flex;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        
+        .checkbox-group label {
+            margin-left: 8px;
+            font-weight: normal;
+        }
+        
+        .checkbox-group input[type="checkbox"] {
+            width: auto;
+        }
+        
+        .point-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 15px;
+            padding: 20px;
+        }
+        
+        .point-card {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 15px;
+            background-color: #fafafa;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .point-card:hover {
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            transform: translateY(-2px);
+            border-color: #3498db;
+        }
+        
+        .point-card h4 {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            color: #2c3e50;
+        }
+        
+        .point-id {
+            font-size: 12px;
+            color: #7f8c8d;
+        }
+        
+        .point-coords {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        
+        .point-coords input {
+            width: 100%;
+        }
+        
+        .point-collected {
+            display: flex;
+            align-items: center;
+            margin-top: 10px;
+        }
+        
+        .empty-message {
+            text-align: center;
+            padding: 40px 20px;
+            color: #95a5a6;
+            font-style: italic;
+            font-size: 14px;
+        }
+        
+        .status-bar {
+            margin-top: auto;
+            padding-top: 15px;
+            border-top: 1px solid #eee;
+            font-size: 13px;
+            color: #7f8c8d;
+            flex-shrink: 0;
+        }
+        
+        .file-controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .file-controls input[type="file"] {
+            display: none;
+        }
+        
+        .file-label {
+            background-color: #34495e;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            font-size: 14px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            box-sizing: border-box;
+        }
+        
+        .file-label:hover {
+            background-color: #2c3e50;
+        }
+        
+        .icon-selector {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 5px;
+        }
+        
+        .icon-option {
+            padding: 6px 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 13px;
+        }
+        
+        .icon-option:hover {
+            background-color: #f0f0f0;
+        }
+        
+        .icon-option.selected {
+            background-color: #3498db;
+            color: white;
+            border-color: #3498db;
+        }
+        
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 20px;
+            border-bottom: 1px solid #eee;
+            background-color: #f8f9fa;
+        }
+        
+        .content-area {
+            padding: 20px;
+            flex-grow: 1;
+            overflow-y: auto;
+        }
+        
+        .breadcrumb {
+            font-size: 14px;
+            color: #7f8c8d;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .breadcrumb-item {
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+        
+        .breadcrumb-item:hover {
+            color: #3498db;
+            text-decoration: underline;
+        }
+        
+        .breadcrumb-separator {
+            margin: 0 5px;
+        }
+        
+        .edit-form {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .action-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        
+        .modal {
+            background-color: white;
+            border-radius: 10px;
+            width: 90%;
+            max-width: 600px;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        }
+        
+        .modal-header {
+            padding: 20px;
+            border-bottom: 1px solid #eee;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .modal-body {
+            padding: 20px;
+        }
+        
+        .modal-footer {
+            padding: 20px;
+            border-top: 1px solid #eee;
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+        }
+        
+        .close-btn {
+            background: none;
+            border: none;
+            font-size: 20px;
+            cursor: pointer;
+            color: #7f8c8d;
+            transition: color 0.2s;
+        }
+        
+        .close-btn:hover {
+            color: #e74c3c;
+        }
+        
+        .icon-preview {
+            display: inline-block;
+            width: 24px;
+            height: 24px;
+            background-color: #eee;
+            border-radius: 4px;
+            margin-right: 8px;
+            text-align: center;
+            line-height: 24px;
+            font-size: 14px;
+        }
+        
+        .city-list, .category-list, .activity-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 15px;
+            padding: 20px;
+        }
+        
+        .city-card, .category-card, .activity-card {
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 15px;
+            background-color: #fafafa;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .city-card:hover, .category-card:hover, .activity-card:hover {
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+            transform: translateY(-2px);
+            border-color: #3498db;
+        }
+        
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        
+        .card-actions {
+            display: flex;
+            gap: 5px;
+        }
+        
+        .card-content {
+            margin-top: 10px;
+        }
+        
+        .card-stats {
+            font-size: 12px;
+            color: #7f8c8d;
+            display: flex;
+            gap: 10px;
+            margin-top: 8px;
+        }
+        
+        .input-inline {
+            border: none;
+            background: transparent;
+            font-weight: 600;
+            color: #2c3e50;
+            font-size: 16px;
+            width: 100%;
+            padding: 2px 0;
+            border-bottom: 1px dashed #ddd;
+            transition: border-color 0.2s;
+        }
+        
+        .input-inline:focus {
+            outline: none;
+            border-bottom: 2px solid #3498db;
+        }
+        
+        .view-toggle {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+            padding: 0 20px;
+        }
+        
+        .view-toggle-btn {
+            padding: 8px 16px;
+            background-color: #f0f0f0;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s;
+        }
+        
+        .view-toggle-btn:hover {
+            background-color: #e0e0e0;
+        }
+        
+        .view-toggle-btn.active {
+            background-color: #3498db;
+            color: white;
+        }
+        
+        .list-view {
+            padding: 0;
+        }
+        
+        .list-view-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        
+        .list-view-table th {
+            background-color: #f8f9fa;
+            padding: 12px 15px;
+            text-align: left;
+            font-weight: 600;
+            color: #2c3e50;
+            border-bottom: 2px solid #eee;
+            font-size: 14px;
+        }
+        
+        .list-view-table td {
+            padding: 10px 15px;
+            border-bottom: 1px solid #eee;
+            vertical-align: top;
+        }
+        
+        .list-view-table tr:hover {
+            background-color: #f9f9f9;
+        }
+        
+        .list-view-table tr.selected {
+            background-color: #e3f2fd;
+        }
+        
+        .list-view-table input,
+        .list-view-table select {
+            width: 100%;
+            padding: 6px 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 13px;
+            transition: border-color 0.2s;
+        }
+        
+        .list-view-table input:focus,
+        .list-view-table select:focus {
+            outline: none;
+            border-color: #3498db;
+            box-shadow: 0 0 0 2px rgba(52, 152, 219, 0.2);
+        }
+        
+        .list-view-actions {
+            display: flex;
+            gap: 5px;
+        }
+        
+        .auto-navigate-checkbox {
+            margin: 0 20px 15px 20px;
+            padding: 12px 15px;
+            background-color: #f8f9fa;
+            border-radius: 5px;
+            border: 1px solid #eee;
+        }
+        
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        
+        .section-header h2 {
+            margin: 0;
+            color: #2c3e50;
+        }
+        
+        .edit-info {
+            background-color: #f8f9fa;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+            border: 1px solid #eee;
+        }
+        
+        .edit-info-row {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 10px;
+        }
+        
+        .edit-info-label {
+            font-weight: 600;
+            color: #2c3e50;
+            min-width: 120px;
+        }
+        
+        .edit-info-value {
+            color: #34495e;
+        }
+        
+        @media (max-width: 1100px) {
+            .container {
+                grid-template-columns: 1fr;
+                height: auto;
+            }
+            
+            .sidebar {
+                max-height: 400px;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .point-list, .city-list, .category-list, .activity-list {
+                grid-template-columns: 1fr;
+            }
+            
+            .list-view-table {
+                display: block;
+                overflow-x: auto;
+            }
+            
+            .file-controls {
+                flex-direction: column;
+            }
+            
+            .btn, .file-label {
+                width: 100%;
+                justify-content: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="sidebar">
+            <h1>Навигация</h1>
+            
+            <!-- Добавляем блок с информацией о файле -->
+            <div id="fileInfo" class="file-info">
+                <div class="file-info-header">Информация о файле:</div>
+                <div class="file-info-content">
+                    <div id="fileStatus" class="file-status file-status-new">Новый файл</div>
+                    <div id="fileName"></div>
+                </div>
+            </div>
+            
+            <div class="file-controls">
+                <label class="file-label" for="fileInput">
+                    <span>📂</span> Загрузить
+                </label>
+                <input type="file" id="fileInput" accept=".json">
+                <button class="btn btn-export" id="exportBtn">
+                    <span>💾</span> Экспорт
+                </button>
+                <button class="btn btn-add" id="newFile">
+                    <span>+</span> Новый файл
+                </button>
+            </div>
+            
+            <div class="sidebar-content">
+                <div class="section">
+                    <div class="section-title">
+                        <h4 onclick="showCitiesView()">Города</h4>
+                        <button class="btn-add-small" id="addCityFromSidebar" title="Добавить город">+</button>
+                    </div>
+                    <div class="list-container" id="citiesNavList"></div>
+                </div>
+                
+                <div class="section">
+                    <div id="categoriesNavSection" style="display: none;">
+                        <div class="section-title">
+                            <h4 onclick="showCityView(currentView.cityIndex)">Категории</h4>
+                            <button class="btn-add-small" id="addCategoryFromSidebar" title="Добавить категорию">+</button>
+                        </div>
+                        <div class="list-container" id="categoriesNavList"></div>
+                    </div>
+                </div>
+                
+                <div class="section">
+                    <div id="activitiesNavSection" style="display: none;">
+                        <div class="section-title">
+                            <h4 onclick="showCategoryView(currentView.cityIndex, currentView.categoryIndex)">Активности</h4>
+                            <button class="btn-add-small" id="addActivityFromSidebar" title="Добавить активность">+</button>
+                        </div>
+                        <div class="list-container" id="activitiesNavList"></div>
+                    </div>
+                </div>
+                
+                <div class="section">
+                    <div id="pointsNavSection" style="display: none;">
+                        <div class="section-title">
+                            <h4 onclick="showActivityView(currentView.cityIndex, currentView.categoryIndex, currentView.activityIndex)">Точки</h4>
+                            <button class="btn-add-small" id="addPointFromSidebar" title="Добавить точку">+</button>
+                        </div>
+                        <div class="list-container" id="pointsNavList"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="status-bar" id="statusBar">
+                Готов к работе
+            </div>
+        </div>
+        
+        <div class="main-content">
+            <div class="header">
+                <div class="breadcrumb" id="breadcrumb">
+                    <span class="breadcrumb-item" data-type="root">Редактор</span>
+                </div>
+                <div id="headerActions"></div>
+            </div>
+            
+            <div class="auto-navigate-checkbox">
+                <div class="checkbox-group">
+                    <input type="checkbox" id="autoNavigate">
+                    <label for="autoNavigate">Автопереход к созданному элементу</label>
+                </div>
+            </div>
+            
+            <div id="content">
+                <!-- Контент будет динамически меняться -->
+            </div>
+        </div>
+    </div>
+    
+    <!-- Модальное окно для редактирования точки -->
+    <div id="pointModal" class="modal-overlay" style="display: none;">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>Редактирование точки</h3>
+                <button class="close-btn" id="closePointModal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div class="edit-form">
+                    <div class="point-coords">
+                        <div class="form-group">
+                            <label for="modalPointX">Координата X</label>
+                            <input type="number" id="modalPointX" class="form-control">
+                        </div>
+                        <div class="form-group">
+                            <label for="modalPointY">Координата Y</label>
+                            <input type="number" id="modalPointY" class="form-control">
+                        </div>
+                        <div class="form-group">
+                            <label for="modalPointHeight">Высота</label>
+                            <input type="number" id="modalPointHeight" class="form-control">
+                        </div>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="modalPointLabel">Метка</label>
+                        <input type="text" id="modalPointLabel" class="form-control" placeholder="Введите метку">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="modalPointDescription">Описание</label>
+                        <textarea id="modalPointDescription" class="form-control" placeholder="Введите описание точки" rows="4"></textarea>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="modalPointNote">Заметка</label>
+                        <textarea id="modalPointNote" class="form-control" placeholder="Введите заметку" rows="3"></textarea>
+                    </div>
+                    
+                    <div class="checkbox-group">
+                        <input type="checkbox" id="modalPointCollected">
+                        <label for="modalPointCollected">Собрано</label>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>ID: <span id="modalPointId" style="font-family: monospace; background-color: #f0f0f0; padding: 2px 6px; border-radius: 3px;"></span></label>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-back" id="modalClosePointBtn">Закрыть</button>
+                <button class="btn btn-delete" id="modalDeletePointBtn">Удалить точку</button>
+                <button class="btn" id="modalSavePointBtn">Сохранить</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Исходные данные
+        let data = {
+            "version": 1,
+            "nextCityId": 1,
+            "cities": []
+        };
+        
+        // Базовые значения nextId из загруженного файла
+        let fileBaseline = null;
+        
+        // Имя загруженного файла
+        let loadedFileName = null;
+        
+        // История навигации
+        let navigationHistory = [];
+        let currentView = {
+            type: 'cities', // 'cities', 'city', 'category', 'activity'
+            cityIndex: -1,
+            categoryIndex: -1,
+            activityIndex: -1,
+            viewMode: 'list' // По умолчанию список
+        };
+        
+        // Настройки
+        let autoNavigate = false; // Изменено: отключено по умолчанию
+        
+        // DOM элементы
+        const content = document.getElementById('content');
+        const breadcrumb = document.getElementById('breadcrumb');
+        const headerActions = document.getElementById('headerActions');
+        const statusBar = document.getElementById('statusBar');
+        const autoNavigateCheckbox = document.getElementById('autoNavigate');
+        
+        // Элементы информации о файле
+        const fileInfo = document.getElementById('fileInfo');
+        const fileStatus = document.getElementById('fileStatus');
+        const fileName = document.getElementById('fileName');
+        
+        // Кнопки добавления в сайдбаре
+        const addCityFromSidebar = document.getElementById('addCityFromSidebar');
+        const addCategoryFromSidebar = document.getElementById('addCategoryFromSidebar');
+        const addActivityFromSidebar = document.getElementById('addActivityFromSidebar');
+        const addPointFromSidebar = document.getElementById('addPointFromSidebar');
+        
+        // Секции навигации
+        const citiesNavList = document.getElementById('citiesNavList');
+        const categoriesNavSection = document.getElementById('categoriesNavSection');
+        const categoriesNavList = document.getElementById('categoriesNavList');
+        const activitiesNavSection = document.getElementById('activitiesNavSection');
+        const activitiesNavList = document.getElementById('activitiesNavList');
+        const pointsNavSection = document.getElementById('pointsNavSection');
+        const pointsNavList = document.getElementById('pointsNavList');
+        
+        // Кнопки управления файлами
+        const newFileBtn = document.getElementById('newFile');
+        const fileInput = document.getElementById('fileInput');
+        const exportBtn = document.getElementById('exportBtn');
+        
+        // Модальное окно точки
+        const pointModal = document.getElementById('pointModal');
+        const closePointModal = document.getElementById('closePointModal');
+        const modalClosePointBtn = document.getElementById('modalClosePointBtn');
+        const modalSavePointBtn = document.getElementById('modalSavePointBtn');
+        const modalDeletePointBtn = document.getElementById('modalDeletePointBtn');
+        
+        // Поля модального окна точки
+        const modalPointX = document.getElementById('modalPointX');
+        const modalPointY = document.getElementById('modalPointY');
+        const modalPointHeight = document.getElementById('modalPointHeight');
+        const modalPointLabel = document.getElementById('modalPointLabel');
+        const modalPointDescription = document.getElementById('modalPointDescription');
+        const modalPointNote = document.getElementById('modalPointNote');
+        const modalPointCollected = document.getElementById('modalPointCollected');
+        const modalPointId = document.getElementById('modalPointId');
+        
+        // Инициализация редактора
+        function init() {
+            // Восстановление состояния из localStorage
+			restoreState();
+            
+            // Обновляем информацию о файле
+            updateFileInfo();
+            
+            // Создание нового файла
+            newFileBtn.addEventListener('click', createNewFile);
+            
+            // Загрузка файла
+            fileInput.addEventListener('change', handleFileUpload);
+            
+            // Экспорт файла
+            exportBtn.addEventListener('click', exportData);
+            
+            // Настройка автоперехода
+            autoNavigateCheckbox.checked = autoNavigate; // Устанавливаем состояние чекбокса
+            autoNavigateCheckbox.addEventListener('change', function() {
+                autoNavigate = this.checked;
+                // Сохраняем настройку в localStorage
+                localStorage.setItem('autoNavigate', this.checked.toString());
+            });
+            
+            // Кнопки добавления в сайдбаре
+            addCityFromSidebar.addEventListener('click', addCity);
+            addCategoryFromSidebar.addEventListener('click', () => {
+                if (currentView.cityIndex !== -1) {
+                    addCategory(currentView.cityIndex);
+                }
+            });
+            addActivityFromSidebar.addEventListener('click', () => {
+                if (currentView.cityIndex !== -1 && currentView.categoryIndex !== -1) {
+                    addActivity(currentView.cityIndex, currentView.categoryIndex);
+                }
+            });
+            addPointFromSidebar.addEventListener('click', () => {
+                if (currentView.cityIndex !== -1 && currentView.categoryIndex !== -1 && currentView.activityIndex !== -1) {
+                    addPoint(currentView.cityIndex, currentView.categoryIndex, currentView.activityIndex);
+                }
+            });
+            
+            // Модальное окно точки
+            closePointModal.addEventListener('click', () => pointModal.style.display = 'none');
+            modalClosePointBtn.addEventListener('click', () => pointModal.style.display = 'none');
+            modalSavePointBtn.addEventListener('click', savePointInModal);
+            modalDeletePointBtn.addEventListener('click', deletePointInModal);
+            
+            // Автоматическое сохранение состояния при изменении данных
+            setupAutoSave();
+            
+            updateStatusBar("Состояние восстановлено из локального хранилища");
+        }
+        
+        // Обновление информации о файле
+        function updateFileInfo() {
+            if (fileBaseline) {
+                fileStatus.textContent = "Загруженный файл";
+                fileStatus.className = "file-status file-status-loaded";
+                
+                if (loadedFileName) {
+                    fileName.textContent = `Имя файла: ${loadedFileName}`;
+                    fileName.title = `Загружен из файла: ${loadedFileName}`;
+                } else {
+                    fileName.textContent = "Файл загружен из сохранённого состояния";
+                    fileName.title = "Файл восстановлен из localStorage";
+                }
+                
+                // Добавляем подсказку
+                fileInfo.title = "Работа с загруженным файлом. ID новых элементов начинаются с базовых значений из файла.";
+            } else {
+                fileStatus.textContent = "Новый файл";
+                fileStatus.className = "file-status file-status-new";
+                fileName.textContent = "Создан новый файл";
+                fileName.title = "";
+                fileInfo.title = "Работа с новым файлом. ID начинаются с 1.";
+            }
+        }
+        
+        // Восстановление состояния из localStorage
+        function restoreState() {
+            try {
+                // Восстанавливаем данные
+                const savedData = localStorage.getItem('editorData');
+                if (savedData) {
+                    const parsedData = JSON.parse(savedData);
+                    if (parsedData.version && parsedData.nextCityId !== undefined && parsedData.cities) {
+                        data = parsedData;
+                    }
+                }
+                
+                // Восстанавливаем базовые значения
+                const savedBaseline = localStorage.getItem('editorBaseline');
+                if (savedBaseline) {
+                    fileBaseline = JSON.parse(savedBaseline);
+                } else {
+					fileBaseline = null;
+                }
+                
+                // Восстанавливаем имя файла
+                const savedFileName = localStorage.getItem('editorFileName');
+                if (savedFileName) {
+                    loadedFileName = savedFileName;
+                } else {
+                    loadedFileName = null;
+                }
+                
+                // Восстанавливаем настройки
+                const savedAutoNavigate = localStorage.getItem('autoNavigate');
+                if (savedAutoNavigate !== null) {
+                    autoNavigate = savedAutoNavigate === 'true';
+                }
+                
+                // Восстанавливаем состояние навигации
+                const savedView = localStorage.getItem('editorView');
+                if (savedView) {
+                    currentView = JSON.parse(savedView);
+                }
+                
+                // Восстанавливаем историю навигации
+                const savedHistory = localStorage.getItem('editorHistory');
+                if (savedHistory) {
+                    navigationHistory = JSON.parse(savedHistory);
+                }
+                
+                // Обновляем UI
+                updateUI();
+            } catch (error) {
+                console.warn("Ошибка при восстановлении состояния:", error);
+                // Если произошла ошибка, создаем новый файл
+                createNewFile();
+            }
+        }
+        
+        // Сохранение состояния в localStorage
+        function saveState() {
+			try {
+				localStorage.setItem('editorData', JSON.stringify(data));
+                localStorage.setItem('editorBaseline', JSON.stringify(fileBaseline));
+                localStorage.setItem('editorFileName', loadedFileName || '');
+                localStorage.setItem('autoNavigate', autoNavigate.toString());
+                localStorage.setItem('editorView', JSON.stringify(currentView));
+                localStorage.setItem('editorHistory', JSON.stringify(navigationHistory));
+            } catch (error) {
+                console.warn("Ошибка при сохранении состояния:", error);
+            }
+        }
+        
+        // Настройка автоматического сохранения
+        function setupAutoSave() {
+            // Сохраняем состояние при изменении данных
+            const originalMethods = {
+                updateCity,
+                updateCategory,
+                updateActivity,
+                updatePoint,
+                addCity,
+                addCategory,
+                addActivity,
+                addPoint,
+                deleteCity,
+                deleteCategory,
+                deleteActivity,
+                deletePoint
+            };
+            
+            // Переопределяем методы для автоматического сохранения
+            for (const methodName in originalMethods) {
+                if (typeof window[methodName] === 'function') {
+                    const originalMethod = window[methodName];
+                    window[methodName] = function(...args) {
+                        const result = originalMethod.apply(this, args);
+                        saveState();
+                        updateFileInfo(); // Обновляем информацию о файле
+                        return result;
+                    };
+                }
+            }
+            
+            // Также сохраняем состояние при изменении представления
+            const originalViewMethods = {
+                showCitiesView,
+                showCityView,
+                showCategoryView,
+                showActivityView,
+                goBack,
+                toggleViewMode
+            };
+            
+            for (const methodName in originalViewMethods) {
+                if (typeof window[methodName] === 'function') {
+                    const originalMethod = window[methodName];
+                    window[methodName] = function(...args) {
+                        const result = originalMethod.apply(this, args);
+                        saveState();
+                        return result;
+                    };
+                }
+            }
+        }
+        
+        // Создание нового файла
+        function createNewFile() {
+            data = {
+                "version": 1,
+                "nextCityId": 1,
+                "cities": []
+            };
+            
+            // Сбрасываем базовые значения
+            fileBaseline = null;
+            loadedFileName = null;
+            
+            currentView = {
+                type: 'cities',
+                cityIndex: -1,
+                categoryIndex: -1,
+                activityIndex: -1,
+                viewMode: 'list'
+            };
+            
+            navigationHistory = [];
+            
+            // Сохраняем состояние
+            saveState();
+            
+            updateFileInfo();
+            updateUI();
+            updateStatusBar("Создан новый файл");
+        }
+        
+        // Загрузка файла
+        function handleFileUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const parsedData = JSON.parse(e.target.result);
+                    
+                    // Проверка структуры
+                    if (!parsedData.version || !parsedData.nextCityId || !parsedData.cities) {
+                        throw new Error("Неверная структура файла");
+                    }
+                    
+                    data = parsedData;
+                    
+                    // Создаем базовые значения из файла
+                    fileBaseline = {
+                        nextCityId: data.nextCityId,
+                        cities: {}
+                    };
+                    
+                    data.cities.forEach((city, cityIndex) => {
+                        fileBaseline.cities[city.id] = {
+                            nextCategoryId: city.nextCategoryId,
+                            categories: {}
+                        };
+                        
+                        city.categories.forEach((category, catIndex) => {
+                            fileBaseline.cities[city.id].categories[category.id] = {
+                                nextActivityId: category.nextActivityId,
+                                activities: {}
+                            };
+                            
+                            category.activities.forEach((activity, actIndex) => {
+                                fileBaseline.cities[city.id].categories[category.id].activities[activity.id] = {
+                                    nextPointId: activity.nextPointId
+                                };
+                            });
+                        });
+                    });
+                    
+                    // Сохраняем имя файла
+                    loadedFileName = file.name;
+                    
+                    currentView = {
+                        type: 'cities',
+                        cityIndex: -1,
+                        categoryIndex: -1,
+                        activityIndex: -1,
+                        viewMode: 'list'
+                    };
+                    
+                    navigationHistory = [];
+                    
+                    // Сохраняем состояние
+                    saveState();
+                    
+                    updateFileInfo();
+                    updateUI();
+                    updateStatusBar(`Файл "${file.name}" успешно загружен`);
+                } catch (error) {
+                    alert(`Ошибка при загрузке файла: ${error.message}`);
+                }
+            };
+            
+            reader.readAsText(file);
+            event.target.value = '';
+        }
+        
+        // Экспорт данных
+        function exportData() {
+            const jsonStr = JSON.stringify(data, null, 2);
+            const blob = new Blob([jsonStr], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            
+            const a = document.createElement('a');
+            a.href = url;
+            
+            // Используем имя загруженного файла или генерируем новое
+            let exportFileName;
+            if (fileBaseline && loadedFileName) {
+                // Для загруженного файла добавляем суффикс
+                const nameWithoutExt = loadedFileName.replace(/\.[^/.]+$/, "");
+                exportFileName = `${nameWithoutExt}_modified.json`;
+            } else {
+                // Для нового файла генерируем стандартное имя
+                exportFileName = `cities_data_${new Date().toISOString().slice(0, 10)}.json`;
+            }
+            
+            a.download = exportFileName;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+            
+            updateStatusBar("Файл экспортирован");
+        }
+        
+        // Получить максимальный ID из массива элементов
+        function getMaxId(elements, prefix) {
+            if (elements.length === 0) return 0;
+            
+            const ids = elements
+                .map(item => {
+                    const match = item.id.match(new RegExp(`^${prefix}(\\d+)$`));
+                    return match ? parseInt(match[1]) : 0;
+                })
+                .filter(id => !isNaN(id));
+            
+            return ids.length > 0 ? Math.max(...ids) : 0;
+        }
+        
+        // Получить базовое значение nextId для элемента
+        function getBaselineNextId(path, type) {
+            if (!fileBaseline) return null;
+            
+            let current = fileBaseline;
+            
+            for (const segment of path) {
+                if (current && current[segment]) {
+                    current = current[segment];
+                } else {
+                    return null;
+                }
+            }
+            
+            return current && current[type] !== undefined ? current[type] : null;
+        }
+        
+        // Корректировка nextId
+        function adjustNextId(maxId, baselineValue) {
+            // Если есть базовое значение из файла, используем максимум из: базовое значение, maxId + 1
+            // Если нет базового значения (новый файл), используем maxId + 1 или 1
+            const minValue = baselineValue !== null ? baselineValue : 1;
+            return Math.max(minValue, maxId + 1);
+        }
+        
+        // Добавление нового города
+        function addCity() {
+            const baselineValue = getBaselineNextId([], 'nextCityId');
+            const maxId = getMaxId(data.cities, 'c');
+            
+            // Корректируем nextCityId
+            data.nextCityId = adjustNextId(maxId, baselineValue);
+            
+            const newId = `c${data.nextCityId}`;
+            data.nextCityId++;
+            
+            const newCity = {
+                "id": newId,
+                "name": `Новый город ${newId}`,
+                "nextCategoryId": 1,
+                "categories": []
+            };
+            
+            data.cities.push(newCity);
+            
+            if (autoNavigate) {
+                showCityView(data.cities.length - 1);
+            }
+            
+            updateUI();
+            updateStatusBar(`Добавлен новый город: ${newId}`);
+            saveState();
+        }
+        
+        // Добавление новой категории
+        function addCategory(cityIndex) {
+            if (cityIndex === -1) return;
+            
+            const city = data.cities[cityIndex];
+            const baselineValue = getBaselineNextId([city.id], 'nextCategoryId');
+            const maxId = getMaxId(city.categories, 'cat');
+            
+            // Корректируем nextCategoryId
+            city.nextCategoryId = adjustNextId(maxId, baselineValue);
+            
+            const newId = `cat${city.nextCategoryId}`;
+            city.nextCategoryId++;
+            
+            const newCategory = {
+                "id": newId,
+                "name": `Новая категория ${newId}`,
+                "nextActivityId": 1,
+                "activities": []
+            };
+            
+            city.categories.push(newCategory);
+            
+            if (autoNavigate) {
+                showCategoryView(cityIndex, city.categories.length - 1);
+            }
+            
+            updateUI();
+            updateStatusBar(`Добавлена новая категория: ${newId}`);
+            saveState();
+        }
+        
+        // Добавление новой активности
+        function addActivity(cityIndex, categoryIndex) {
+            if (cityIndex === -1 || categoryIndex === -1) return;
+            
+            const city = data.cities[cityIndex];
+            const category = city.categories[categoryIndex];
+            const baselineValue = getBaselineNextId([city.id, category.id], 'nextActivityId');
+            const maxId = getMaxId(category.activities, 'a');
+            
+            // Корректируем nextActivityId
+            category.nextActivityId = adjustNextId(maxId, baselineValue);
+            
+            const newId = `a${category.nextActivityId}`;
+            category.nextActivityId++;
+            
+            const newActivity = {
+                "id": newId,
+                "name": `Новая активность ${newId}`,
+                "icon": null,
+                "show": true,
+                "nextPointId": 1,
+                "points": []
+            };
+            
+            category.activities.push(newActivity);
+            
+            if (autoNavigate) {
+                showActivityView(cityIndex, categoryIndex, category.activities.length - 1);
+            }
+            
+            updateUI();
+            updateStatusBar(`Добавлена новая активность: ${newId}`);
+            saveState();
+        }
+        
+        // Добавление новой точки
+        function addPoint(cityIndex, categoryIndex, activityIndex) {
+            if (cityIndex === -1 || categoryIndex === -1 || activityIndex === -1) return;
+            
+            const city = data.cities[cityIndex];
+            const category = city.categories[categoryIndex];
+            const activity = category.activities[activityIndex];
+            const baselineValue = getBaselineNextId([city.id, category.id, activity.id], 'nextPointId');
+            const maxId = getMaxId(activity.points, 'p');
+            
+            // Корректируем nextPointId
+            activity.nextPointId = adjustNextId(maxId, baselineValue);
+            
+            const newId = `p${activity.nextPointId}`;
+            activity.nextPointId++;
+            
+            const newPoint = {
+                "id": newId,
+                "x": 0,
+                "y": 0,
+                "height": null,
+                "label": null,
+                "description": "",
+                "note": "",
+                "collected": false
+            };
+            
+            activity.points.push(newPoint);
+            
+            updateUI();
+            updateStatusBar(`Добавлена новая точка: ${newId}`);
+            saveState();
+        }
+        
+        // Удаление города
+        function deleteCity(cityIndex) {
+            if (cityIndex === -1) return;
+            
+            const cityId = data.cities[cityIndex].id;
+            data.cities.splice(cityIndex, 1);
+            
+            // Корректируем nextCityId
+            const baselineValue = getBaselineNextId([], 'nextCityId');
+            const maxId = getMaxId(data.cities, 'c');
+            data.nextCityId = adjustNextId(maxId, baselineValue);
+            
+            // Возвращаемся к списку городов
+            showCitiesView();
+            updateStatusBar(`Удален город: ${cityId}`);
+        }
+        
+        // Удаление категории
+        function deleteCategory(cityIndex, categoryIndex) {
+            if (cityIndex === -1 || categoryIndex === -1) return;
+            
+            const city = data.cities[cityIndex];
+            const categoryId = city.categories[categoryIndex].id;
+            city.categories.splice(categoryIndex, 1);
+            
+            // Корректируем nextCategoryId
+            const baselineValue = getBaselineNextId([city.id], 'nextCategoryId');
+            const maxId = getMaxId(city.categories, 'cat');
+            city.nextCategoryId = adjustNextId(maxId, baselineValue);
+            
+            // Возвращаемся к списку категорий города
+            showCityView(cityIndex);
+            updateStatusBar(`Удалена категория: ${categoryId}`);
+        }
+        
+        // Удаление активности
+        function deleteActivity(cityIndex, categoryIndex, activityIndex) {
+            if (cityIndex === -1 || categoryIndex === -1 || activityIndex === -1) return;
+            
+            const city = data.cities[cityIndex];
+            const category = city.categories[categoryIndex];
+            const activityId = category.activities[activityIndex].id;
+            category.activities.splice(activityIndex, 1);
+            
+            // Корректируем nextActivityId
+            const baselineValue = getBaselineNextId([city.id, category.id], 'nextActivityId');
+            const maxId = getMaxId(category.activities, 'a');
+            category.nextActivityId = adjustNextId(maxId, baselineValue);
+            
+            // Возвращаемся к списку активностей категории
+            showCategoryView(cityIndex, categoryIndex);
+            updateStatusBar(`Удалена активность: ${activityId}`);
+        }
+        
+        // Удаление точки
+        function deletePoint(cityIndex, categoryIndex, activityIndex, pointIndex) {
+            if (cityIndex === -1 || categoryIndex === -1 || activityIndex === -1 || pointIndex === -1) return;
+            
+            const city = data.cities[cityIndex];
+            const category = city.categories[categoryIndex];
+            const activity = category.activities[activityIndex];
+            const pointId = activity.points[pointIndex].id;
+            activity.points.splice(pointIndex, 1);
+            
+            // Корректируем nextPointId
+            const baselineValue = getBaselineNextId([city.id, category.id, activity.id], 'nextPointId');
+            const maxId = getMaxId(activity.points, 'p');
+            activity.nextPointId = adjustNextId(maxId, baselineValue);
+            
+            // Закрываем модальное окно и обновляем вид активности
+            pointModal.style.display = 'none';
+            updateUI();
+            updateStatusBar(`Удалена точка: ${pointId}`);
+        }
+        
+        // Редактирование города
+        function updateCity(cityIndex, newName) {
+            if (cityIndex === -1) return;
+            
+            const city = data.cities[cityIndex];
+            city.name = newName;
+            
+            updateUI();
+            updateStatusBar(`Город обновлен: ${city.id}`);
+        }
+        
+        // Редактирование категории
+        function updateCategory(cityIndex, categoryIndex, newName) {
+            if (cityIndex === -1 || categoryIndex === -1) return;
+            
+            const city = data.cities[cityIndex];
+            const category = city.categories[categoryIndex];
+            category.name = newName;
+            
+            updateUI();
+            updateStatusBar(`Категория обновлена: ${category.id}`);
+        }
+        
+        // Редактирование активности
+        function updateActivity(cityIndex, categoryIndex, activityIndex, updates) {
+            if (cityIndex === -1 || categoryIndex === -1 || activityIndex === -1) return;
+            
+            const city = data.cities[cityIndex];
+            const category = city.categories[categoryIndex];
+            const activity = category.activities[activityIndex];
+            
+            Object.assign(activity, updates);
+            
+            updateUI();
+            updateStatusBar(`Активность обновлена: ${activity.id}`);
+        }
+        
+        // Редактирование точки
+        function updatePoint(cityIndex, categoryIndex, activityIndex, pointIndex, updates) {
+            if (cityIndex === -1 || categoryIndex === -1 || activityIndex === -1 || pointIndex === -1) return;
+            
+            const city = data.cities[cityIndex];
+            const category = city.categories[categoryIndex];
+            const activity = category.activities[activityIndex];
+            const point = activity.points[pointIndex];
+            
+            Object.assign(point, updates);
+            
+            updateUI();
+            updateStatusBar(`Точка обновлена: ${point.id}`);
+        }
+        
+        // Сохранение точки в модальном окне
+        function savePointInModal() {
+            const pointIndex = parseInt(pointModal.dataset.pointIndex);
+            const activityIndex = parseInt(pointModal.dataset.activityIndex);
+            const categoryIndex = parseInt(pointModal.dataset.categoryIndex);
+            const cityIndex = parseInt(pointModal.dataset.cityIndex);
+            
+            const updates = {
+                x: parseInt(modalPointX.value) || 0,
+                y: parseInt(modalPointY.value) || 0,
+                height: modalPointHeight.value ? parseInt(modalPointHeight.value) : null,
+                label: modalPointLabel.value || null,
+                description: modalPointDescription.value || null,
+                note: modalPointNote.value || null,
+                collected: modalPointCollected.checked
+            };
+            
+            updatePoint(cityIndex, categoryIndex, activityIndex, pointIndex, updates);
+            pointModal.style.display = 'none';
+        }
+        
+        // Открытие модального окна для редактирования точки
+        function openPointModal(cityIndex, categoryIndex, activityIndex, pointIndex) {
+            const city = data.cities[cityIndex];
+            const category = city.categories[categoryIndex];
+            const activity = category.activities[activityIndex];
+            const point = activity.points[pointIndex];
+            
+            // Сохраняем индексы в dataset модального окна
+            pointModal.dataset.cityIndex = cityIndex;
+            pointModal.dataset.categoryIndex = categoryIndex;
+            pointModal.dataset.activityIndex = activityIndex;
+            pointModal.dataset.pointIndex = pointIndex;
+            
+            // Заполняем поля
+            modalPointX.value = point.x;
+            modalPointY.value = point.y;
+            modalPointHeight.value = point.height || '';
+            modalPointLabel.value = point.label || '';
+            modalPointDescription.value = point.description || '';
+            modalPointNote.value = point.note || '';
+            modalPointCollected.checked = point.collected;
+            modalPointId.textContent = point.id;
+            
+            // Показываем модальное окно
+            pointModal.style.display = 'flex';
+        }
+        
+        // Удаление точки из модального окна
+        function deletePointInModal() {
+            const pointIndex = parseInt(pointModal.dataset.pointIndex);
+            const activityIndex = parseInt(pointModal.dataset.activityIndex);
+            const categoryIndex = parseInt(pointModal.dataset.categoryIndex);
+            const cityIndex = parseInt(pointModal.dataset.cityIndex);
+            
+            deletePoint(cityIndex, categoryIndex, activityIndex, pointIndex);
+        }
+        
+        // Переключение режима отображения
+        function toggleViewMode(mode) {
+            currentView.viewMode = mode;
+            updateContent();
+        }
+        
+        // Показать вид со списком городов
+        function showCitiesView() {
+            currentView = {
+                type: 'cities',
+                cityIndex: -1,
+                categoryIndex: -1,
+                activityIndex: -1,
+                viewMode: currentView.viewMode
+            };
+            
+            navigationHistory = [];
+            updateUI();
+        }
+        
+        // Показать вид города
+        function showCityView(cityIndex) {
+            if (cityIndex === -1) return showCitiesView();
+            
+            currentView = {
+                type: 'city',
+                cityIndex: cityIndex,
+                categoryIndex: -1,
+                activityIndex: -1,
+                viewMode: currentView.viewMode
+            };
+            
+            navigationHistory.push({
+                type: 'cities',
+                cityIndex: -1,
+                categoryIndex: -1,
+                activityIndex: -1
+            });
+            
+            updateUI();
+        }
+        
+        // Показать вид категории
+        function showCategoryView(cityIndex, categoryIndex) {
+            if (cityIndex === -1 || categoryIndex === -1) {
+                if (cityIndex !== -1) {
+                    showCityView(cityIndex);
+                } else {
+                    showCitiesView();
+                }
+                return;
+            }
+            
+            currentView = {
+                type: 'category',
+                cityIndex: cityIndex,
+                categoryIndex: categoryIndex,
+                activityIndex: -1,
+                viewMode: currentView.viewMode
+            };
+            
+            navigationHistory.push({
+                type: 'city',
+                cityIndex: cityIndex,
+                categoryIndex: -1,
+                activityIndex: -1
+            });
+            
+            updateUI();
+        }
+        
+        // Показать вид активности
+        function showActivityView(cityIndex, categoryIndex, activityIndex) {
+            if (cityIndex === -1 || categoryIndex === -1 || activityIndex === -1) {
+                if (cityIndex !== -1 && categoryIndex !== -1) {
+                    showCategoryView(cityIndex, categoryIndex);
+                } else if (cityIndex !== -1) {
+                    showCityView(cityIndex);
+                } else {
+                    showCitiesView();
+                }
+                return;
+            }
+            
+            currentView = {
+                type: 'activity',
+                cityIndex: cityIndex,
+                categoryIndex: categoryIndex,
+                activityIndex: activityIndex,
+                viewMode: currentView.viewMode
+            };
+            
+            navigationHistory.push({
+                type: 'category',
+                cityIndex: cityIndex,
+                categoryIndex: categoryIndex,
+                activityIndex: -1
+            });
+            
+            updateUI();
+        }
+        
+        // Назад по истории
+        function goBack() {
+            if (navigationHistory.length > 0) {
+                currentView = navigationHistory.pop();
+                updateUI();
+            }
+        }
+        
+        // Обновление UI
+        function updateUI() {
+            updateNavigation();
+            updateContent();
+            updateBreadcrumb();
+            updateStatusBar();
+        }
+        
+        // Обновление навигации
+        function updateNavigation() {
+            // Обновляем список городов в навигации
+            updateCitiesNavList();
+            
+            // Показываем/скрываем разделы навигации
+            if (currentView.cityIndex !== -1) {
+                categoriesNavSection.style.display = 'block';
+                updateCategoriesNavList();
+                
+                if (currentView.categoryIndex !== -1) {
+                    activitiesNavSection.style.display = 'block';
+                    updateActivitiesNavList();
+                    
+                    if (currentView.activityIndex !== -1) {
+                        pointsNavSection.style.display = 'block';
+                        updatePointsNavList();
+                    } else {
+                        pointsNavSection.style.display = 'none';
+                    }
+                } else {
+                    activitiesNavSection.style.display = 'none';
+                    pointsNavSection.style.display = 'none';
+                }
+            } else {
+                categoriesNavSection.style.display = 'none';
+                activitiesNavSection.style.display = 'none';
+                pointsNavSection.style.display = 'none';
+            }
+        }
+        
+        // Обновление списка городов в навигации
+        function updateCitiesNavList() {
+            citiesNavList.innerHTML = '';
+            
+            if (data.cities.length === 0) {
+                citiesNavList.innerHTML = '<div style="padding: 10px; color: #95a5a6; text-align: center; font-size: 12px;">Нет городов</div>';
+                return;
+            }
+            
+            data.cities.forEach((city, index) => {
+                const item = document.createElement('div');
+                item.className = `list-item ${index === currentView.cityIndex ? 'selected' : ''}`;
+                item.innerHTML = `
+                    <div class="item-content">
+                        <div class="item-name">${city.name}</div>
+                        <div class="item-id">${city.id}</div>
+                    </div>
+                    <div class="item-actions">
+                        <button class="btn btn-delete" onclick="event.stopPropagation(); deleteCity(${index});">×</button>
+                    </div>
+                `;
+                item.addEventListener('click', () => showCityView(index));
+                citiesNavList.appendChild(item);
+            });
+        }
+        
+        // Обновление списка категорий в навигации
+        function updateCategoriesNavList() {
+            if (currentView.cityIndex === -1) return;
+            
+            categoriesNavList.innerHTML = '';
+            const city = data.cities[currentView.cityIndex];
+            
+            if (city.categories.length === 0) {
+                categoriesNavList.innerHTML = '<div style="padding: 10px; color: #95a5a6; text-align: center; font-size: 12px;">Нет категорий</div>';
+                return;
+            }
+            
+            city.categories.forEach((category, index) => {
+                const item = document.createElement('div');
+                item.className = `list-item ${index === currentView.categoryIndex ? 'selected' : ''}`;
+                item.innerHTML = `
+                    <div class="item-content">
+                        <div class="item-name">${category.name}</div>
+                        <div class="item-id">${category.id}</div>
+                    </div>
+                    <div class="item-actions">
+                        <button class="btn btn-delete" onclick="event.stopPropagation(); deleteCategory(${currentView.cityIndex}, ${index});">×</button>
+                    </div>
+                `;
+                item.addEventListener('click', () => showCategoryView(currentView.cityIndex, index));
+                categoriesNavList.appendChild(item);
+            });
+        }
+        
+        // Обновление списка активностей в навигации
+        function updateActivitiesNavList() {
+            if (currentView.cityIndex === -1 || currentView.categoryIndex === -1) return;
+            
+            activitiesNavList.innerHTML = '';
+            const city = data.cities[currentView.cityIndex];
+            const category = city.categories[currentView.categoryIndex];
+            
+            if (category.activities.length === 0) {
+                activitiesNavList.innerHTML = '<div style="padding: 10px; color: #95a5a6; text-align: center; font-size: 12px;">Нет активностей</div>';
+                return;
+            }
+            
+            category.activities.forEach((activity, index) => {
+                const item = document.createElement('div');
+                item.className = `list-item ${index === currentView.activityIndex ? 'selected' : ''}`;
+                item.innerHTML = `
+                    <div class="item-content">
+                        <div class="item-name">
+                            ${activity.icon ? `<span style="margin-right: 5px; font-size: 12px;">${activity.icon}</span>` : ''}
+                            ${activity.name}
+                        </div>
+                        <div class="item-id">${activity.id}</div>
+                    </div>
+                    <div class="item-actions">
+                        <button class="btn btn-delete" onclick="event.stopPropagation(); deleteActivity(${currentView.cityIndex}, ${currentView.categoryIndex}, ${index});">×</button>
+                    </div>
+                `;
+                item.addEventListener('click', () => showActivityView(currentView.cityIndex, currentView.categoryIndex, index));
+                activitiesNavList.appendChild(item);
+            });
+        }
+        
+        // Обновление списка точек в навигации
+        function updatePointsNavList() {
+            if (currentView.cityIndex === -1 || currentView.categoryIndex === -1 || currentView.activityIndex === -1) return;
+            
+            pointsNavList.innerHTML = '';
+            const city = data.cities[currentView.cityIndex];
+            const category = city.categories[currentView.categoryIndex];
+            const activity = category.activities[currentView.activityIndex];
+            
+            if (activity.points.length === 0) {
+                pointsNavList.innerHTML = '<div style="padding: 10px; color: #95a5a6; text-align: center; font-size: 12px;">Нет точек</div>';
+                return;
+            }
+            
+            activity.points.forEach((point, index) => {
+                const item = document.createElement('div');
+                item.className = `list-item`;
+                item.innerHTML = `
+                    <div class="item-content">
+                        <div class="item-name">${point.id}</div>
+                        <div class="item-id">(${point.x}, ${point.y}) ${point.collected ? '✓' : ''}</div>
+                    </div>
+                    <div class="item-actions">
+                        <button class="btn btn-delete" onclick="event.stopPropagation(); deletePoint(${currentView.cityIndex}, ${currentView.categoryIndex}, ${currentView.activityIndex}, ${index});">×</button>
+                    </div>
+                `;
+                item.addEventListener('click', () => openPointModal(currentView.cityIndex, currentView.categoryIndex, currentView.activityIndex, index));
+                pointsNavList.appendChild(item);
+            });
+        }
+        
+        // Обновление содержимого
+        function updateContent() {
+            content.innerHTML = '';
+            headerActions.innerHTML = '';
+            
+            // Добавляем кнопки переключения вида для ВСЕХ типов представлений
+            const viewToggle = document.createElement('div');
+            viewToggle.className = 'view-toggle';
+            viewToggle.innerHTML = `
+                <button class="view-toggle-btn ${currentView.viewMode === 'grid' ? 'active' : ''}" onclick="toggleViewMode('grid')">Сетка</button>
+                <button class="view-toggle-btn ${currentView.viewMode === 'list' ? 'active' : ''}" onclick="toggleViewMode('list')">Список</button>
+            `;
+            content.appendChild(viewToggle);
+            
+            switch (currentView.type) {
+                case 'cities':
+                    renderCitiesView();
+                    break;
+                case 'city':
+                    renderCityView();
+                    break;
+                case 'category':
+                    renderCategoryView();
+                    break;
+                case 'activity':
+                    renderActivityView();
+                    break;
+            }
+        }
+        
+        // Рендер вида городов
+        function renderCitiesView() {
+            // Кнопка добавления города
+            const addBtn = document.createElement('button');
+            addBtn.className = 'btn btn-add';
+            addBtn.innerHTML = '<span>+</span> Добавить город';
+            addBtn.addEventListener('click', addCity);
+            headerActions.appendChild(addBtn);
+            
+            // Список городов
+            if (data.cities.length === 0) {
+                content.innerHTML += '<div class="empty-message">Нет городов. Добавьте первый город.</div>';
+                return;
+            }
+            
+            if (currentView.viewMode === 'grid') {
+                const citiesContainer = document.createElement('div');
+                citiesContainer.className = 'city-list';
+                
+                data.cities.forEach((city, index) => {
+                    const card = document.createElement('div');
+                    card.className = 'city-card';
+                    card.innerHTML = `
+                        <div class="card-header">
+                            <input type="text" class="input-inline" value="${city.name}" 
+                                   onchange="updateCity(${index}, this.value)">
+                            <div class="card-actions">
+                                <button class="btn btn-delete" onclick="deleteCity(${index}); event.stopPropagation();">×</button>
+                            </div>
+                        </div>
+                        <div class="card-content">
+                            <div style="margin-bottom: 5px;">ID: <strong>${city.id}</strong></div>
+                            <div class="card-stats">
+                                <span>Категорий: ${city.categories.length}</span>
+                                <span>Next ID: ${city.nextCategoryId}</span>
+                            </div>
+                        </div>
+                    `;
+                    card.addEventListener('click', (e) => {
+                        if (!e.target.classList.contains('input-inline') && 
+                            !e.target.classList.contains('btn-delete')) {
+                            showCityView(index);
+                        }
+                    });
+                    citiesContainer.appendChild(card);
+                });
+                
+                content.appendChild(citiesContainer);
+            } else {
+                // Режим списка - таблица
+                const table = document.createElement('table');
+                table.className = 'list-view-table';
+                table.innerHTML = `
+                    <thead>
+                        <tr>
+                            <th style="width: 40%;">Название</th>
+                            <th style="width: 15%;">ID</th>
+                            <th style="width: 20%;">Категорий</th>
+                            <th style="width: 15%;">Next ID</th>
+                            <th style="width: 10%;">Действия</th>
+                        </tr>
+                    </thead>
+                    <tbody id="citiesTableBody"></tbody>
+                `;
+                
+                const tableBody = table.querySelector('#citiesTableBody');
+                
+                data.cities.forEach((city, index) => {
+                    const row = document.createElement('tr');
+                    row.className = index === currentView.cityIndex ? 'selected' : '';
+                    row.innerHTML = `
+                        <td>
+                            <input type="text" value="${city.name}" 
+                                   onchange="updateCity(${index}, this.value)" style="width: 100%;">
+                        </td>
+                        <td><code>${city.id}</code></td>
+                        <td>${city.categories.length}</td>
+                        <td>${city.nextCategoryId}</td>
+                        <td>
+                            <div class="list-view-actions">
+                                <button class="btn" onclick="showCityView(${index}); event.stopPropagation();">Открыть</button>
+                                <button class="btn btn-delete" onclick="deleteCity(${index}); event.stopPropagation();">×</button>
+                            </div>
+                        </td>
+                    `;
+                    row.addEventListener('click', (e) => {
+                        if (!e.target.classList.contains('btn') && e.target.type !== 'text') {
+                            showCityView(index);
+                        }
+                    });
+                    tableBody.appendChild(row);
+                });
+                
+                const listContainer = document.createElement('div');
+                listContainer.className = 'list-view';
+                listContainer.appendChild(table);
+                content.appendChild(listContainer);
+            }
+        }
+        
+        // Рендер вида города
+        function renderCityView() {
+            const city = data.cities[currentView.cityIndex];
+            
+            // Кнопка назад
+            const backBtn = document.createElement('button');
+            backBtn.className = 'btn btn-back';
+            backBtn.innerHTML = '← Назад';
+            backBtn.addEventListener('click', goBack);
+            headerActions.appendChild(backBtn);
+            
+            // Кнопка добавления категории
+            const addBtn = document.createElement('button');
+            addBtn.className = 'btn btn-add';
+            addBtn.innerHTML = '<span>+</span> Добавить категорию';
+            addBtn.addEventListener('click', () => addCategory(currentView.cityIndex));
+            headerActions.appendChild(addBtn);
+            
+            // Информация о городе
+            const info = document.createElement('div');
+            info.className = 'edit-info';
+            info.innerHTML = `
+                <div class="edit-info-row">
+                    <div class="edit-info-label">Название:</div>
+                    <div class="edit-info-value"><strong>${city.name}</strong></div>
+                </div>
+                <div class="edit-info-row">
+                    <div class="edit-info-label">ID:</div>
+                    <div class="edit-info-value"><code>${city.id}</code></div>
+                </div>
+                <div class="edit-info-row">
+                    <div class="edit-info-label">Next Category ID:</div>
+                    <div class="edit-info-value">${city.nextCategoryId}</div>
+                </div>
+            `;
+            content.appendChild(info);
+            
+            // Список категорий
+            if (city.categories.length === 0) {
+                const emptyMsg = document.createElement('div');
+                emptyMsg.className = 'empty-message';
+                emptyMsg.textContent = 'Нет категорий. Добавьте первую категорию.';
+                content.appendChild(emptyMsg);
+                return;
+            }
+            
+            if (currentView.viewMode === 'grid') {
+                const categoriesContainer = document.createElement('div');
+                categoriesContainer.className = 'category-list';
+                
+                city.categories.forEach((category, index) => {
+                    const card = document.createElement('div');
+                    card.className = 'category-card';
+                    card.innerHTML = `
+                        <div class="card-header">
+                            <input type="text" class="input-inline" value="${category.name}" 
+                                   onchange="updateCategory(${currentView.cityIndex}, ${index}, this.value)">
+                            <div class="card-actions">
+                                <button class="btn btn-delete" onclick="deleteCategory(${currentView.cityIndex}, ${index}); event.stopPropagation();">×</button>
+                            </div>
+                        </div>
+                        <div class="card-content">
+                            <div style="margin-bottom: 5px;">ID: <strong>${category.id}</strong></div>
+                            <div class="card-stats">
+                                <span>Активностей: ${category.activities.length}</span>
+                                <span>Next ID: ${category.nextActivityId}</span>
+                            </div>
+                        </div>
+                    `;
+                    card.addEventListener('click', (e) => {
+                        if (!e.target.classList.contains('input-inline') && 
+                            !e.target.classList.contains('btn-delete')) {
+                            showCategoryView(currentView.cityIndex, index);
+                        }
+                    });
+                    categoriesContainer.appendChild(card);
+                });
+                
+                content.appendChild(categoriesContainer);
+            } else {
+                // Режим списка - таблица
+                const table = document.createElement('table');
+                table.className = 'list-view-table';
+                table.innerHTML = `
+                    <thead>
+                        <tr>
+                            <th style="width: 40%;">Название</th>
+                            <th style="width: 15%;">ID</th>
+                            <th style="width: 20%;">Активностей</th>
+                            <th style="width: 15%;">Next ID</th>
+                            <th style="width: 10%;">Действия</th>
+                        </tr>
+                    </thead>
+                    <tbody id="categoriesTableBody"></tbody>
+                `;
+                
+                const tableBody = table.querySelector('#categoriesTableBody');
+                
+                city.categories.forEach((category, index) => {
+                    const row = document.createElement('tr');
+                    row.className = index === currentView.categoryIndex ? 'selected' : '';
+                    row.innerHTML = `
+                        <td>
+                            <input type="text" value="${category.name}" 
+                                   onchange="updateCategory(${currentView.cityIndex}, ${index}, this.value)" style="width: 100%;">
+                        </td>
+                        <td><code>${category.id}</code></td>
+                        <td>${category.activities.length}</td>
+                        <td>${category.nextActivityId}</td>
+                        <td>
+                            <div class="list-view-actions">
+                                <button class="btn" onclick="showCategoryView(${currentView.cityIndex}, ${index}); event.stopPropagation();">Открыть</button>
+                                <button class="btn btn-delete" onclick="deleteCategory(${currentView.cityIndex}, ${index}); event.stopPropagation();">×</button>
+                            </div>
+                        </td>
+                    `;
+                    row.addEventListener('click', (e) => {
+                        if (!e.target.classList.contains('btn') && e.target.type !== 'text') {
+                            showCategoryView(currentView.cityIndex, index);
+                        }
+                    });
+                    tableBody.appendChild(row);
+                });
+                
+                const listContainer = document.createElement('div');
+                listContainer.className = 'list-view';
+                listContainer.appendChild(table);
+                content.appendChild(listContainer);
+            }
+        }
+        
+        // Рендер вида категории
+        function renderCategoryView() {
+            const city = data.cities[currentView.cityIndex];
+            const category = city.categories[currentView.categoryIndex];
+            
+            // Кнопка назад
+            const backBtn = document.createElement('button');
+            backBtn.className = 'btn btn-back';
+            backBtn.innerHTML = '← Назад';
+            backBtn.addEventListener('click', goBack);
+            headerActions.appendChild(backBtn);
+            
+            // Кнопка добавления активности
+            const addBtn = document.createElement('button');
+            addBtn.className = 'btn btn-add';
+            addBtn.innerHTML = '<span>+</span> Добавить активность';
+            addBtn.addEventListener('click', () => addActivity(currentView.cityIndex, currentView.categoryIndex));
+            headerActions.appendChild(addBtn);
+            
+            // Информация о категории
+            const info = document.createElement('div');
+            info.className = 'edit-info';
+            info.innerHTML = `
+                <div class="edit-info-row">
+                    <div class="edit-info-label">Название:</div>
+                    <div class="edit-info-value"><strong>${category.name}</strong></div>
+                </div>
+                <div class="edit-info-row">
+                    <div class="edit-info-label">ID:</div>
+                    <div class="edit-info-value"><code>${category.id}</code></div>
+                </div>
+                <div class="edit-info-row">
+                    <div class="edit-info-label">Next Activity ID:</div>
+                    <div class="edit-info-value">${category.nextActivityId}</div>
+                </div>
+            `;
+            content.appendChild(info);
+            
+            // Список активностей
+            if (category.activities.length === 0) {
+                const emptyMsg = document.createElement('div');
+                emptyMsg.className = 'empty-message';
+                emptyMsg.textContent = 'Нет активностей. Добавьте первую активность.';
+                content.appendChild(emptyMsg);
+                return;
+            }
+            
+            if (currentView.viewMode === 'grid') {
+                const activitiesContainer = document.createElement('div');
+                activitiesContainer.className = 'activity-list';
+                
+                category.activities.forEach((activity, index) => {
+                    const card = document.createElement('div');
+                    card.className = 'activity-card';
+                    card.innerHTML = `
+                        <div class="card-header">
+                            <div style="display: flex; align-items: center; gap: 8px; width: 100%;">
+                                ${activity.icon ? `<span style="font-size: 20px;">${activity.icon}</span>` : ''}
+                                <input type="text" class="input-inline" value="${activity.name}" 
+                                       onchange="updateActivity(${currentView.cityIndex}, ${currentView.categoryIndex}, ${index}, {name: this.value})" style="flex-grow: 1;">
+                            </div>
+                            <div class="card-actions">
+                                <button class="btn btn-delete" onclick="deleteActivity(${currentView.cityIndex}, ${currentView.categoryIndex}, ${index}); event.stopPropagation();">×</button>
+                            </div>
+                        </div>
+                        <div class="card-content">
+                            <div class="form-group" style="margin-bottom: 10px;">
+                                <input type="text" class="form-control" value="${activity.icon || ''}" placeholder="Иконка (эмодзи)"
+                                       onchange="updateActivity(${currentView.cityIndex}, ${currentView.categoryIndex}, ${index}, {icon: this.value || null})">
+                            </div>
+                            <div class="checkbox-group">
+                                <input type="checkbox" id="show-${index}" ${activity.show ? 'checked' : ''}
+                                       onchange="updateActivity(${currentView.cityIndex}, ${currentView.categoryIndex}, ${index}, {show: this.checked})">
+                                <label for="show-${index}">Показывать</label>
+                            </div>
+                            <div class="card-stats">
+                                <span>ID: <code>${activity.id}</code></span>
+                                <span>Точек: ${activity.points.length}</span>
+                                <span>Next ID: ${activity.nextPointId}</span>
+                            </div>
+                        </div>
+                    `;
+                    card.addEventListener('click', (e) => {
+                        if (!e.target.classList.contains('input-inline') && 
+                            !e.target.classList.contains('form-control') &&
+                            !e.target.classList.contains('btn-delete') &&
+                            e.target.type !== 'checkbox') {
+                            showActivityView(currentView.cityIndex, currentView.categoryIndex, index);
+                        }
+                    });
+                    activitiesContainer.appendChild(card);
+                });
+                
+                content.appendChild(activitiesContainer);
+            } else {
+                // Режим списка - таблица
+                const table = document.createElement('table');
+                table.className = 'list-view-table';
+                table.innerHTML = `
+                    <thead>
+                        <tr>
+                            <th style="width: 30%;">Название</th>
+                            <th style="width: 10%;">Иконка</th>
+                            <th style="width: 15%;">ID</th>
+                            <th style="width: 15%;">Точек</th>
+                            <th style="width: 10%;">Показывать</th>
+                            <th style="width: 10%;">Next ID</th>
+                            <th style="width: 10%;">Действия</th>
+                        </tr>
+                    </thead>
+                    <tbody id="activitiesTableBody"></tbody>
+                `;
+                
+                const tableBody = table.querySelector('#activitiesTableBody');
+                
+                category.activities.forEach((activity, index) => {
+                    const row = document.createElement('tr');
+                    row.className = index === currentView.activityIndex ? 'selected' : '';
+                    row.innerHTML = `
+                        <td>
+                            <input type="text" value="${activity.name}" 
+                                   onchange="updateActivity(${currentView.cityIndex}, ${currentView.categoryIndex}, ${index}, {name: this.value})" style="width: 100%;">
+                        </td>
+                        <td>
+                            <input type="text" value="${activity.icon || ''}" 
+                                   onchange="updateActivity(${currentView.cityIndex}, ${currentView.categoryIndex}, ${index}, {icon: this.value || null})" style="width: 100%;" placeholder="Иконка">
+                        </td>
+                        <td><code>${activity.id}</code></td>
+                        <td>${activity.points.length}</td>
+                        <td>
+                            <input type="checkbox" ${activity.show ? 'checked' : ''}
+                                   onchange="updateActivity(${currentView.cityIndex}, ${currentView.categoryIndex}, ${index}, {show: this.checked})">
+                        </td>
+                        <td>${activity.nextPointId}</td>
+                        <td>
+                            <div class="list-view-actions">
+                                <button class="btn" onclick="showActivityView(${currentView.cityIndex}, ${currentView.categoryIndex}, ${index}); event.stopPropagation();">Открыть</button>
+                                <button class="btn btn-delete" onclick="deleteActivity(${currentView.cityIndex}, ${currentView.categoryIndex}, ${index}); event.stopPropagation();">×</button>
+                            </div>
+                        </td>
+                    `;
+                    row.addEventListener('click', (e) => {
+                        if (!e.target.classList.contains('btn') && e.target.type !== 'text' && e.target.type !== 'checkbox') {
+                            showActivityView(currentView.cityIndex, currentView.categoryIndex, index);
+                        }
+                    });
+                    tableBody.appendChild(row);
+                });
+                
+                const listContainer = document.createElement('div');
+                listContainer.className = 'list-view';
+                listContainer.appendChild(table);
+                content.appendChild(listContainer);
+            }
+        }
+        
+        // Рендер вида активности
+        function renderActivityView() {
+            const city = data.cities[currentView.cityIndex];
+            const category = city.categories[currentView.categoryIndex];
+            const activity = category.activities[currentView.activityIndex];
+            
+            // Кнопка назад
+            const backBtn = document.createElement('button');
+            backBtn.className = 'btn btn-back';
+            backBtn.innerHTML = '← Назад';
+            backBtn.addEventListener('click', goBack);
+            headerActions.appendChild(backBtn);
+            
+            // Кнопка добавления точки
+            const addBtn = document.createElement('button');
+            addBtn.className = 'btn btn-add';
+            addBtn.innerHTML = '<span>+</span> Добавить точку';
+            addBtn.addEventListener('click', () => addPoint(currentView.cityIndex, currentView.categoryIndex, currentView.activityIndex));
+            headerActions.appendChild(addBtn);
+            
+            // Информация об активности
+            const info = document.createElement('div');
+            info.className = 'edit-info';
+            info.innerHTML = `
+                <div class="edit-info-row">
+                    <div class="edit-info-label">Название:</div>
+                    <div class="edit-info-value"><strong>${activity.name}</strong></div>
+                </div>
+                <div class="edit-info-row">
+                    <div class="edit-info-label">ID:</div>
+                    <div class="edit-info-value"><code>${activity.id}</code></div>
+                </div>
+                <div class="edit-info-row">
+                    <div class="edit-info-label">Next Point ID:</div>
+                    <div class="edit-info-value">${activity.nextPointId}</div>
+                </div>
+                <div class="edit-info-row">
+                    <div class="edit-info-label">Иконка:</div>
+                    <div class="edit-info-value">${activity.icon || 'нет'}</div>
+                </div>
+                <div class="edit-info-row">
+                    <div class="edit-info-label">Показывать:</div>
+                    <div class="edit-info-value">${activity.show ? 'Да' : 'Нет'}</div>
+                </div>
+            `;
+            content.appendChild(info);
+            
+            // Список точек
+            if (activity.points.length === 0) {
+                const emptyMsg = document.createElement('div');
+                emptyMsg.className = 'empty-message';
+                emptyMsg.textContent = 'Нет точек. Добавьте первую точку.';
+                content.appendChild(emptyMsg);
+                return;
+            }
+            
+            if (currentView.viewMode === 'grid') {
+                // Рендеринг в виде сетки
+                const pointsContainer = document.createElement('div');
+                pointsContainer.className = 'point-list';
+                
+                activity.points.forEach((point, index) => {
+                    const card = document.createElement('div');
+                    card.className = 'point-card';
+                    card.innerHTML = `
+                        <h4>
+                            <span>Точка ${point.id}</span>
+                            <span class="point-id">${point.collected ? '✓ Собрана' : 'Не собрана'}</span>
+                        </h4>
+                        <div class="point-coords">
+                            <div class="form-group">
+                                <label>X</label>
+                                <input type="number" class="form-control" value="${point.x}" 
+                                       onchange="updatePoint(${currentView.cityIndex}, ${currentView.categoryIndex}, ${currentView.activityIndex}, ${index}, {x: parseInt(this.value) || 0})">
+                            </div>
+                            <div class="form-group">
+                                <label>Y</label>
+                                <input type="number" class="form-control" value="${point.y}" 
+                                       onchange="updatePoint(${currentView.cityIndex}, ${currentView.categoryIndex}, ${currentView.activityIndex}, ${index}, {y: parseInt(this.value) || 0})">
+                            </div>
+                            <div class="form-group">
+                                <label>Высота</label>
+                                <input type="number" class="form-control" value="${point.height || ''}" 
+                                       onchange="updatePoint(${currentView.cityIndex}, ${currentView.categoryIndex}, ${currentView.activityIndex}, ${index}, {height: this.value ? parseInt(this.value) : null})">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Метка</label>
+                            <input type="text" class="form-control" value="${point.label || ''}" 
+                                   onchange="updatePoint(${currentView.cityIndex}, ${currentView.categoryIndex}, ${currentView.activityIndex}, ${index}, {label: this.value || null})">
+                        </div>
+                        <div class="action-buttons">
+                            <button class="btn" onclick="openPointModal(${currentView.cityIndex}, ${currentView.categoryIndex}, ${currentView.activityIndex}, ${index})">Редактировать полностью</button>
+                            <button class="btn btn-delete" onclick="deletePoint(${currentView.cityIndex}, ${currentView.categoryIndex}, ${currentView.activityIndex}, ${index})">Удалить</button>
+                        </div>
+                    `;
+                    pointsContainer.appendChild(card);
+                });
+                
+                content.appendChild(pointsContainer);
+            } else {
+                // Рендеринг в виде списка
+                const table = document.createElement('table');
+                table.className = 'list-view-table';
+                table.innerHTML = `
+                    <thead>
+                        <tr>
+                            <th style="width: 10%;">ID</th>
+                            <th style="width: 15%;">X</th>
+                            <th style="width: 15%;">Y</th>
+                            <th style="width: 15%;">Высота</th>
+                            <th style="width: 20%;">Метка</th>
+                            <th style="width: 10%;">Собрана</th>
+                            <th style="width: 15%;">Действия</th>
+                        </tr>
+                    </thead>
+                    <tbody id="pointsTableBody"></tbody>
+                `;
+                
+                const tableBody = table.querySelector('#pointsTableBody');
+                
+                activity.points.forEach((point, index) => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td><code>${point.id}</code></td>
+                        <td>
+                            <input type="number" value="${point.x}" 
+                                   onchange="updatePoint(${currentView.cityIndex}, ${currentView.categoryIndex}, ${currentView.activityIndex}, ${index}, {x: parseInt(this.value) || 0})" style="width: 100%;">
+                        </td>
+                        <td>
+                            <input type="number" value="${point.y}" 
+                                   onchange="updatePoint(${currentView.cityIndex}, ${currentView.categoryIndex}, ${currentView.activityIndex}, ${index}, {y: parseInt(this.value) || 0})" style="width: 100%;">
+                        </td>
+                        <td>
+                            <input type="number" value="${point.height || ''}" 
+                                   onchange="updatePoint(${currentView.cityIndex}, ${currentView.categoryIndex}, ${currentView.activityIndex}, ${index}, {height: this.value ? parseInt(this.value) : null})" style="width: 100%;">
+                        </td>
+                        <td>
+                            <input type="text" value="${point.label || ''}" 
+                                   onchange="updatePoint(${currentView.cityIndex}, ${currentView.categoryIndex}, ${currentView.activityIndex}, ${index}, {label: this.value || null})" style="width: 100%;">
+                        </td>
+                        <td>
+                            <input type="checkbox" ${point.collected ? 'checked' : ''}
+                                   onchange="updatePoint(${currentView.cityIndex}, ${currentView.categoryIndex}, ${currentView.activityIndex}, ${index}, {collected: this.checked})">
+                        </td>
+                        <td>
+                            <div class="list-view-actions">
+                                <button class="btn" onclick="openPointModal(${currentView.cityIndex}, ${currentView.categoryIndex}, ${currentView.activityIndex}, ${index}); event.stopPropagation();">Подробно</button>
+                                <button class="btn btn-delete" onclick="deletePoint(${currentView.cityIndex}, ${currentView.categoryIndex}, ${currentView.activityIndex}, ${index}); event.stopPropagation();">×</button>
+                            </div>
+                        </td>
+                    `;
+                    tableBody.appendChild(row);
+                });
+                
+                const listContainer = document.createElement('div');
+                listContainer.className = 'list-view';
+                listContainer.appendChild(table);
+                content.appendChild(listContainer);
+            }
+        }
+        
+        // Обновление хлебных крошек
+        function updateBreadcrumb() {
+            breadcrumb.innerHTML = '';
+            
+            // Корень
+            const rootItem = document.createElement('span');
+            rootItem.className = 'breadcrumb-item';
+            rootItem.textContent = 'Редактор';
+            rootItem.addEventListener('click', showCitiesView);
+            breadcrumb.appendChild(rootItem);
+            
+            // Город
+            if (currentView.cityIndex !== -1) {
+                const city = data.cities[currentView.cityIndex];
+                const separator = document.createElement('span');
+                separator.className = 'breadcrumb-separator';
+                separator.textContent = '›';
+                breadcrumb.appendChild(separator);
+                
+                const cityItem = document.createElement('span');
+                cityItem.className = 'breadcrumb-item';
+                cityItem.textContent = city.name;
+                cityItem.addEventListener('click', () => showCityView(currentView.cityIndex));
+                breadcrumb.appendChild(cityItem);
+            }
+            
+            // Категория
+            if (currentView.categoryIndex !== -1) {
+                const city = data.cities[currentView.cityIndex];
+                const category = city.categories[currentView.categoryIndex];
+                const separator = document.createElement('span');
+                separator.className = 'breadcrumb-separator';
+                separator.textContent = '›';
+                breadcrumb.appendChild(separator);
+                
+                const categoryItem = document.createElement('span');
+                categoryItem.className = 'breadcrumb-item';
+                categoryItem.textContent = category.name;
+                categoryItem.addEventListener('click', () => showCategoryView(currentView.cityIndex, currentView.categoryIndex));
+                breadcrumb.appendChild(categoryItem);
+            }
+            
+            // Активность
+            if (currentView.activityIndex !== -1) {
+                const city = data.cities[currentView.cityIndex];
+                const category = city.categories[currentView.categoryIndex];
+                const activity = category.activities[currentView.activityIndex];
+                const separator = document.createElement('span');
+                separator.className = 'breadcrumb-separator';
+                separator.textContent = '›';
+                breadcrumb.appendChild(separator);
+                
+                const activityItem = document.createElement('span');
+                activityItem.className = 'breadcrumb-item';
+                activityItem.textContent = activity.name;
+                activityItem.addEventListener('click', () => showActivityView(currentView.cityIndex, currentView.categoryIndex, currentView.activityIndex));
+                breadcrumb.appendChild(activityItem);
+            }
+        }
+        
+        // Обновление статус-бара
+        function updateStatusBar(message = null) {
+            if (message) {
+                statusBar.textContent = message;
+                return;
+            }
+            
+            const citiesCount = data.cities.length;
+            let categoriesCount = 0;
+            let activitiesCount = 0;
+            let pointsCount = 0;
+            
+            data.cities.forEach(city => {
+                categoriesCount += city.categories.length;
+                city.categories.forEach(category => {
+                    activitiesCount += category.activities.length;
+                    category.activities.forEach(activity => {
+                        pointsCount += activity.points.length;
+                    });
+                });
+            });
+            
+            statusBar.textContent = `Городов: ${citiesCount} | Категорий: ${categoriesCount} | Активностей: ${activitiesCount} | Точек: ${pointsCount}`;
+        }
+        
+        // Инициализация при загрузке страницы
+        window.addEventListener('DOMContentLoaded', init);
+        
+        // Экспортируем функции для использования в inline обработчиках
+        window.deleteCity = deleteCity;
+        window.deleteCategory = deleteCategory;
+        window.deleteActivity = deleteActivity;
+        window.deletePoint = deletePoint;
+        window.updateCity = updateCity;
+        window.updateCategory = updateCategory;
+        window.updateActivity = updateActivity;
+        window.updatePoint = updatePoint;
+        window.openPointModal = openPointModal;
+        window.toggleViewMode = toggleViewMode;
+        window.showCityView = showCityView;
+        window.showCategoryView = showCategoryView;
+        window.showActivityView = showActivityView;
+        window.goBack = goBack;
+        window.showCitiesView = showCitiesView;
+    </script>
+</body>
+</html>
