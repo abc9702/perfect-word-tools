@@ -4893,6 +4893,22 @@ function buildMenu() {
     
 }
 
+
+document.getElementById("toggleCollapseExpand").onclick = () => {
+    // Собираем все ключи из collapsed
+    const allKeys = Object.keys(collapsed);
+    
+    // Определяем, есть ли хоть один развёрнутый элемент
+    let anyExpanded = allKeys.some(key => collapsed[key] === false);
+
+    // Переключаем все collapsed значения
+    allKeys.forEach(key => {
+        collapsed[key] = anyExpanded;
+    });
+
+    buildMenu();
+};
+
 /* ---------- ФУНКЦИИ ДЛЯ ОКНА СПРАВКИ ---------- */
 function openHelpModal() {
     const helpOverlay = document.getElementById("helpOverlay");
