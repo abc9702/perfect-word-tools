@@ -55,7 +55,8 @@
     <div class="button-container">
         <button onclick="openMapPage()">Интерактивная карта востока</button>
         <button onclick="openSolverPage()">Созвездия (ГШ)</button>
-        <button onclick="openUserscriptsPage()">Скрипт для подарков (сундуки за караван)</button>
+        <button onclick="openUserscriptsPage()">Скрипт для подарков<br>(сундуки за караван)</button>
+        <button onclick="openOtherPage()">Разное</button>
     </div>
 
     <script>
@@ -66,7 +67,10 @@
             window.location.href = "grid-solver.html";
         }
         function openUserscriptsPage() {
-            window.location.href = "https://github.com/abc9702/pw-gifts-panel/raw/refs/heads/main/PW%20Gifts%20Panel%20Enhanced-3.8.3.user.js";
+            window.location.href = "https://github.com/abc9702/pw-gifts-panel/raw/refs/heads/main/pw-gifts-panel-enhanced.user.js";
+        }
+        function openOtherPage() {
+            window.location.href = "other.html";
         }
     </script>
 </body>
