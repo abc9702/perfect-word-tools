@@ -1152,18 +1152,16 @@ hr.divider {
 }
 
 /* Заголовки popup */
-#pointPopupHeader, #centerPopupHeader, #multiPointPopupHeader {
+#pointPopupHeader, 
+#centerPopupHeader, 
+#multiPointPopupHeader {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  padding: 0;
 }
 
 #pointPopupTitle, #centerPopupTitle, #multiPointPopupTitle {
-  font-weight: bold;
-}
-
-#pointPopupClose, #centerPopupClose, #multiPointPopupClose {
-  cursor: pointer;
   font-weight: bold;
 }
 
@@ -1173,17 +1171,6 @@ hr.divider {
 
 #centerPopupClose {
   font-size: 18px;
-}
-
-#multiPointPopupClose {
-  font-size: 18px;
-  padding: 0 5px;
-  -webkit-tap-highlight-color: transparent;
-  min-width: 24px; /* Минимальный размер для touch */
-  min-height: 24px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
 }
 
 /* Координаты в popup */
@@ -1296,6 +1283,78 @@ hr.divider {
 .copy-button-initialized {
   min-width: 25px;
   min-height: 25px;
+}
+
+/* Единый стиль для кнопок в заголовках popup */
+.popup-header-btn {
+    width: 26px;
+    height: 26px;
+    padding: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: transparent;
+    border: 0px solid #bbb;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 18px;
+    color: #000;
+    transition: all 0.2s ease;
+    line-height: 1;
+    -webkit-tap-highlight-color: transparent;
+    touch-action: manipulation;
+}
+
+.popup-header-btn:hover {
+    background: #e6ebf1;
+    border-color: #888;
+    color: #333;
+}
+
+.popup-header-btn.close-btn {
+    font-size: 22px;
+    font-weight: normal;
+}
+
+.popup-header-btn img,
+.popup-header-btn svg {
+    width: 20px;
+    height: 20px;
+    display: block;
+}
+
+/* Адаптация для мобильных устройств */
+@media (max-width: 480px) {
+    .popup-header-btn {
+        width: 26px;
+        height: 26px;
+        font-size: 18px;
+    }
+    
+    .popup-header-btn.close-btn {
+        font-size: 24px;
+    }
+    
+    .popup-header-btn img,
+    .popup-header-btn svg {
+        width: 22px;
+        height: 22px;
+    }
+}
+
+/* Отключение hover на touch-устройствах */
+@media (hover: none) and (pointer: coarse) {
+    .popup-header-btn:hover {
+        background: transparent;
+        border-color: #bbb;
+        color: #666;
+    }
+    
+    .popup-header-btn:active {
+        background: #e6ebf1;
+        border-color: #888;
+        color: #333;
+    }
 }
 
 /* ОКНО ВЫБОРА ТОЧКИ - МУЛЬТИПОПАП =========================================== */
@@ -2244,8 +2303,11 @@ details details > summary {
 <div id="pointPopup">
 	<div id="pointPopupContent">
 	  <div id="pointPopupHeader">
-		<span id="pointPopupTitle"></span>
-		<span id="pointPopupClose">&times;</span>
+		<span id="pointPopupTitle"></span>    
+		<div style="display: flex; align-items: center; gap: 4px;">
+			<button id="pointPopupExpandBtn" class="popup-header-btn" title="Открыть в центре"></button>
+			<button id="pointPopupClose" class="popup-header-btn close-btn" title="Закрыть">&times;</button>
+		</div>
 	  </div>
 	  <div id="pointPopupCoordsRow">
 		<span id="pointPopupCoordsText"></span>
@@ -2302,7 +2364,9 @@ details details > summary {
 	<div id="centerPopupContent">
 	  <div id="centerPopupHeader">
 		<span id="centerPopupTitle"></span>
-		<span id="centerPopupClose">&times;</span>
+		<div style="display: flex; align-items: center; gap: 4px;">
+			<button id="centerPopupClose" class="popup-header-btn close-btn" title="Закрыть">&times;</button>
+		</div>
 	  </div>
 	  <div id="centerPopupCoordsRow">
 		<span id="centerPopupCoordsText"></span>
@@ -2385,7 +2449,9 @@ details details > summary {
   <div id="multiPointPopupContent">
     <div id="multiPointPopupHeader">
       <span id="multiPointPopupTitle">Выберите точку</span>
-      <span id="multiPointPopupClose">&times;</span>
+      <div style="display: flex; align-items: center; gap: 4px;">
+        <button id="multiPointPopupClose" class="popup-header-btn close-btn" title="Закрыть">&times;</button>
+	  </div>
     </div>
     <div id="multiPointPopupList"></div>
   </div>
@@ -2475,7 +2541,8 @@ const embeddedIcons = new Map([
     ['search.svg', '<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="#1f1f1f"><path d="M784-120 532-372q-30 24-69 38t-83 14q-109 0-184.5-75.5T120-580q0-109 75.5-184.5T380-840q109 0 184.5 75.5T640-580q0 44-14 83t-38 69l252 252-56 56ZM380-400q75 0 127.5-52.5T560-580q0-75-52.5-127.5T380-760q-75 0-127.5 52.5T200-580q0 75 52.5 127.5T380-400Z"/></svg>'],
     ['up.svg', '<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="#1f1f1f"><path d="M480-528 296-344l-56-56 240-240 240 240-56 56-184-184Z"/></svg>'],
     ['visibility_off.svg', '<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="#1f1f1f"><path d="m644-428-58-58q9-47-27-88t-93-32l-58-58q17-8 34.5-12t37.5-4q75 0 127.5 52.5T660-500q0 20-4 37.5T644-428Zm128 126-58-56q38-29 67.5-63.5T832-500q-50-101-143.5-160.5T480-720q-29 0-57 4t-55 12l-62-62q41-17 84-25.5t90-8.5q151 0 269 83.5T920-500q-23 59-60.5 109.5T772-302Zm20 246L624-222q-35 11-70.5 16.5T480-200q-151 0-269-83.5T40-500q21-53 53-98.5t73-81.5L56-792l56-56 736 736-56 56ZM222-624q-29 26-53 57t-41 67q50 101 143.5 160.5T480-280q20 0 39-2.5t39-5.5l-36-38q-11 3-21 4.5t-21 1.5q-75 0-127.5-52.5T300-500q0-11 1.5-21t4.5-21l-84-82Zm319 93Zm-151 75Z"/></svg>'],
-    ['visibility_on.svg', '<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="#1f1f1f"><path d="M607.5-372.5Q660-425 660-500t-52.5-127.5Q555-680 480-680t-127.5 52.5Q300-575 300-500t52.5 127.5Q405-320 480-320t127.5-52.5Zm-204-51Q372-455 372-500t31.5-76.5Q435-608 480-608t76.5 31.5Q588-545 588-500t-31.5 76.5Q525-392 480-392t-76.5-31.5ZM214-281.5Q94-363 40-500q54-137 174-218.5T480-800q146 0 266 81.5T920-500q-54 137-174 218.5T480-200q-146 0-266-81.5ZM480-500Zm207.5 160.5Q782-399 832-500q-50-101-144.5-160.5T480-720q-113 0-207.5 59.5T128-500q50 101 144.5 160.5T480-280q113 0 207.5-59.5Z"/></svg>']
+    ['visibility_on.svg', '<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="#1f1f1f"><path d="M607.5-372.5Q660-425 660-500t-52.5-127.5Q555-680 480-680t-127.5 52.5Q300-575 300-500t52.5 127.5Q405-320 480-320t127.5-52.5Zm-204-51Q372-455 372-500t31.5-76.5Q435-608 480-608t76.5 31.5Q588-545 588-500t-31.5 76.5Q525-392 480-392t-76.5-31.5ZM214-281.5Q94-363 40-500q54-137 174-218.5T480-800q146 0 266 81.5T920-500q-54 137-174 218.5T480-200q-146 0-266-81.5ZM480-500Zm207.5 160.5Q782-399 832-500q-50-101-144.5-160.5T480-720q-113 0-207.5 59.5T128-500q50 101 144.5 160.5T480-280q113 0 207.5-59.5Z"/></svg>'],
+	['expand_popup.svg', '<svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="#1f1f1f"><path d="M200-200v-240h80v160h160v80H200Zm480-320v-160H520v-80h240v240h-80Z"/></svg>']
 ]);
 
 const COLLECTED_ALPHA = 0.6;
@@ -2513,6 +2580,7 @@ const expand_all_name = "expand_all.svg";
 const remove_selection_icon_name = "remove_selection.svg";
 const preview_off_icon_name = "preview_off.svg";
 
+const expand_popup_icon_name = "expand_popup.svg";
 const help_icon_name = "help.svg";
 
 let settingsInitiallyCollapsed = true; // настройки изначально свернуты
@@ -2582,7 +2650,8 @@ const uiIcons = [
   check_icon_name,
   close_icon_name,
   preview_off_icon_name,
-  help_icon_name
+  help_icon_name,
+  expand_popup_icon_name
 ];
 
 function preloadImages(icons, path) {
@@ -3310,6 +3379,7 @@ const pointPopupDescription = document.getElementById("pointPopupDescription");
 const pointPopupSave = document.getElementById("pointPopupSave");
 const pointPopupClose = document.getElementById("pointPopupClose");
 const pointPopupArrow = document.getElementById("pointPopupArrow");
+const pointPopupExpandBtn = document.getElementById("pointPopupExpandBtn");
 
 const pointPopupCoordsText = document.getElementById("pointPopupCoordsText");
 const pointPopupCopyCoords = document.getElementById("pointPopupCopyCoords");
@@ -3348,6 +3418,11 @@ function openPointPopup(p, act, cityId, categoryId, activityId) {
     pointPopupNote.value = p.note || "";
     
     pointPopupToggleCollected.textContent = p.collected ? "Снять отметку" : "Отметить как посещенную";
+    
+    // Устанавливаем иконку для кнопки расширения
+    setupIconButton(pointPopupExpandBtn, expand_popup_icon_name, "⤢", "Открыть в центре");
+	
+	setupIconButton(pointPopupClose, close_icon_name, "✕", "Закрыть");
 
     pointPopup.style.display = "block";
     pointPopupArrow.style.display = "block";
@@ -3431,6 +3506,24 @@ function closePointPopup() {
 
 // крестик
 pointPopupClose.onclick = closePointPopup;
+
+// Обработчик кнопки расширения popup
+pointPopupExpandBtn.onclick = (e) => {
+    e.stopPropagation(); // Предотвращаем всплытие события
+    
+    if (currentPoint && currentActivity && currentIndices) {
+        // Сохраняем данные текущей точки
+        const point = currentPoint;
+        const activity = currentActivity;
+        const { cityId, categoryId, activityId } = currentIndices;
+        
+        // Закрываем обычный popup
+        closePointPopup();
+        
+        // Открываем center popup
+        openCenterPopup(point, activity, cityId, categoryId, activityId);
+    }
+};
 
 // клик на кнопку показать/скрыть
 pointPopupToggleCollected.onclick = () => {
@@ -7431,7 +7524,11 @@ function main() {
 	
 	setupHorizontalWheelScroll();
 	initAllCopyButtons();
-	initHelpModal();
+	initHelpModal();	
+	
+	// Устанавливаем иконки для кнопок закрытия popup
+	setupIconButton(centerPopupClose, close_icon_name, "✕", "Закрыть");
+	setupIconButton(multiPointPopupClose, close_icon_name, "✕", "Закрыть");
 }
 
 window.onresize = () => { 
