@@ -2602,6 +2602,7 @@ const coord_right = 378;
 const coord_top = 1009;
 
 let zoom = 1, offsetX = 0, offsetY = 0;
+let max_zoom = 10;
 let isDragging = false, dragStartX = 0, dragStartY = 0;
 
 // приоритеты (где используются)
@@ -5532,7 +5533,7 @@ canvas.onwheel = e => {
     const oldZoom = zoom;
 
     zoom *= e.deltaY < 0 ? 1.1 : 0.9;
-    zoom = Math.min(Math.max(zoom, 0.3), 5);
+    zoom = Math.min(Math.max(zoom, 0.3), max_zoom);
 
     offsetX = mx - (mx - offsetX) * (zoom / oldZoom);
     offsetY = my - (my - offsetY) * (zoom / oldZoom);
@@ -5688,7 +5689,7 @@ canvas.addEventListener("touchmove", e => {
             
             // Применяем zoom
             zoom *= zoomFactor;
-            zoom = Math.min(Math.max(zoom, 0.3), 5);
+            zoom = Math.min(Math.max(zoom, 0.3), max_zoom);
             
             // Корректируем положение карты так, чтобы центр масштабирования оставался на месте
             // Преобразуем экранные координаты центра в координаты карты
