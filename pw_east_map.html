@@ -2431,16 +2431,23 @@ details details > summary {
 <!-- Окно выбора активности -->
 <div id="pointSelectOverlay" class="filters-overlay hidden">
   <div id="pointSelectWindow" class="filters-window">
-
+  
     <div class="filters-header">
       <span id="pointSelectTitle">Выбор города</span>
       <button id="closePointSelectBtn">✕</button>
     </div>
 
+    <!-- НОВЫЙ ЧЕКБОКС -->
+    <div style="padding: 8px 12px; border-bottom: 1px solid #eee; display: flex; align-items: center; gap: 8px; background: #fafafa;">
+      <input type="checkbox" id="hideOtherActivities" checked>
+      <label for="hideOtherActivities" style="font-size: 14px; cursor: pointer; user-select: none;">
+        Скрыть другие активности
+      </label>
+    </div>
+
     <div id="pointSelectContent" class="filters-list">
       <!-- сюда динамически подставляется содержимое -->
     </div>
-
   </div>
 </div>
 
@@ -7436,17 +7443,53 @@ function showActivitySelection(city, category) {
 }
 
 function selectSingleActivity(cityName, categoryName, activityName) {
-    pointsData.cities.forEach(city => {
-        if (city.name !== cityName) return;
-        
-        city.categories.forEach(cat => {
-            if (cat.name !== categoryName) return;
-            
-            cat.activities.forEach(act => {
-                act.show = act.name === activityName;
+    // Проверяем состояние чекбокса
+    const hideOthers = document.getElementById('hideOtherActivities').checked;
+    
+    if (hideOthers) {
+        // Режим "Скрыть другие категории" - скрываем ВСЁ, показываем только выбранную активность
+        pointsData.cities.forEach(city => {
+            city.categories.forEach(cat => {
+                cat.activities.forEach(act => {
+                    act.show = false;
+                });
             });
         });
-    });
+        
+        // Показываем только выбранную активность
+        pointsData.cities.forEach(city => {
+            if (city.name !== cityName) return;
+            
+            city.categories.forEach(cat => {
+                if (cat.name !== categoryName) return;
+                
+                cat.activities.forEach(act => {
+                    if (act.name === activityName) {
+                        act.show = true;
+                    }
+                });
+            });
+        });
+    } else {
+        // Режим "Добавить" - показываем выбранную активность, не трогая остальные
+        pointsData.cities.forEach(city => {
+            if (city.name !== cityName) return;
+            
+            city.categories.forEach(cat => {
+                if (cat.name !== categoryName) return;
+                
+                cat.activities.forEach(act => {
+                    if (act.name === activityName) {
+                        act.show = true;
+                    }
+                });
+            });
+        });
+    }
+
+    // Сохраняем состояние чекбокса
+    window.hideOtherActivities = document.getElementById('hideOtherActivities').checked;
+    localStorage.setItem(HIDE_OTHERS_KEY, window.hideOtherActivities);
 
     drawMap();
     buildMenu();
@@ -7497,6 +7540,25 @@ document.addEventListener('gestureend', function(e) {
     e.preventDefault();
 });
 
+// ===== СОХРАНЕНИЕ СОСТОЯНИЯ ЧЕКБОКСА "Скрыть другие активности" =====
+const HIDE_OTHERS_KEY = "hideOtherActivitiesOption";
+
+function inithideOtherActivitiesCheckbox() {
+    const checkbox = document.getElementById('hideOtherActivities');
+    if (!checkbox) return;
+    
+    // Читаем сохраненное состояние из localStorage
+    const storedValue = localStorage.getItem(HIDE_OTHERS_KEY);
+    if (storedValue !== null) {
+        checkbox.checked = storedValue === "true";
+    }
+    
+    // Сохраняем состояние при изменении
+    checkbox.addEventListener('change', function() {
+        localStorage.setItem(HIDE_OTHERS_KEY, this.checked);
+    });
+}
+
 function main() {
 	preloadImages(uiIcons, folder);
 	
@@ -7518,6 +7580,9 @@ function main() {
 	initSmoothingSetting(); // Добавляем инициализацию настройки сглаживания
     
 	initPopupPositionToggle();
+	
+    // ===== ИНИЦИАЛИЗАЦИЯ ЧЕКБОКСА =====
+    inithideOtherActivitiesCheckbox();
 	
     // Убедимся, что кнопка toggleMenuBtn видна
     setTimeout(() => {
